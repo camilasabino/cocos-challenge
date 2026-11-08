@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # Throwaway credentials for an ephemeral container; not secrets.
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_password
+          # Only the isolated test database exists in CI.
+          POSTGRES_DB: cocos_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U ci_user -d cocos_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+
+    env:
+      # Satisfies the test isolation guards: loopback host, database exactly
+      # `cocos_test`. DATABASE_URL is required by env validation at app boot;
+      # the e2e setup overrides it with TEST_DATABASE_URL anyway.
+      TEST_DATABASE_URL: postgresql://ci_user:ci_password@localhost:5432/cocos_test
+      DATABASE_URL: postgresql://ci_user:ci_password@localhost:5432/cocos_test
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+
+      - name: Apply database schema
+        env:
+          PGPASSWORD: ci_password
+        run: >-
+          psql -v ON_ERROR_STOP=1
+          -h localhost -U ci_user -d cocos_test
+          -f db/init/01-schema.sql
+
+      - run: npm run test:e2e
