@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import Decimal from 'decimal.js';
 import { EntityManager } from 'typeorm';
 import { parseDecimal } from '../common/decimal';
 import { LedgerOrder } from './account-ledger';
@@ -17,6 +18,25 @@ interface LedgerOrderRow {
   datetime: string | null;
 }
 
+/** Renders a TIMESTAMP-without-zone column (stored as UTC) as an ISO-8601 string with `Z`. */
+const UTC_ISO_FORMAT = `YYYY-MM-DD"T"HH24:MI:SS.MS"Z"`;
+
+/** A validated order ready to be stored. `datetime` is assigned by the database. */
+export interface NewOrder {
+  userId: number;
+  instrumentId: number;
+  side: OrderSide;
+  type: OrderType;
+  status: OrderStatus;
+  size: number;
+  price: Decimal;
+}
+
+export interface InsertedOrder {
+  id: number;
+  datetime: Date;
+}
+
 /**
  * Persistence access for users and orders. Every method runs on the manager it
  * is given, so callers own the transaction (and therefore the snapshot).
@@ -25,6 +45,20 @@ interface LedgerOrderRow {
 export class TradingRepository {
   userExists(manager: EntityManager, userId: number): Promise<boolean> {
     return manager.exists(User, { where: { id: userId } });
+  }
+
+  /**
+   * Takes the row-level lock that serializes order placement for one user and
+   * reports whether the user exists. The lock is held until the surrounding
+   * transaction ends, and a conflicting holder makes this wait at most
+   * `lock_timeout` (set by the caller) before failing with SQLSTATE 55P03.
+   */
+  async lockUser(manager: EntityManager, userId: number): Promise<boolean> {
+    const rows: unknown[] = await manager.query(
+      'SELECT id FROM users WHERE id = $1 FOR UPDATE',
+      [userId],
+    );
+    return rows.length > 0;
   }
 
   /**
@@ -49,10 +83,7 @@ export class TradingRepository {
       .addSelect('o.status', 'status')
       .addSelect('o.size', 'size')
       .addSelect('o.price', 'price')
-      .addSelect(
-        `to_char(o.datetime, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
-        'datetime',
-      )
+      .addSelect(`to_char(o.datetime, '${UTC_ISO_FORMAT}')`, 'datetime')
       .where('o.userId = :userId', { userId })
       .andWhere('o.status IN (:...statuses)', {
         statuses: [OrderStatus.FILLED, OrderStatus.NEW],
@@ -60,6 +91,39 @@ export class TradingRepository {
       .getRawMany<LedgerOrderRow>();
 
     return rows.map(toLedgerOrder);
+  }
+
+  /**
+   * Inserts an order stamped with the database clock expressed in UTC.
+   *
+   * `orders.datetime` is a TIMESTAMP without time zone that the app reads as
+   * UTC (see findLedgerOrders). Passing a JS Date would make the driver
+   * serialize it in the Node process' zone, and PostgreSQL would silently drop
+   * the offset. The value is produced in SQL instead:
+   * `clock_timestamp() AT TIME ZONE 'UTC'` does not depend on the process zone
+   * nor on the session `TimeZone`. `clock_timestamp()` (not `now()`, which is
+   * the transaction start) is evaluated here, after the per-user lock was
+   * granted, so timestamps follow the order in which placements serialized.
+   */
+  async insertOrder(
+    manager: EntityManager,
+    order: NewOrder,
+  ): Promise<InsertedOrder> {
+    const rows: { id: number; datetime: string }[] = await manager.query(
+      `INSERT INTO orders (instrumentid, userid, size, price, type, side, status, datetime)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, clock_timestamp() AT TIME ZONE 'UTC')
+       RETURNING id, to_char(datetime, '${UTC_ISO_FORMAT}') AS datetime`,
+      [
+        order.instrumentId,
+        order.userId,
+        order.size,
+        order.price.toFixed(2),
+        order.type,
+        order.side,
+        order.status,
+      ],
+    );
+    return { id: rows[0].id, datetime: new Date(rows[0].datetime) };
   }
 }
 

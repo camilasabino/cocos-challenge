@@ -45,6 +45,10 @@ export class InstrumentsService {
       .getMany();
   }
 
+  findById(id: number): Promise<Instrument | null> {
+    return this.instruments.findOneBy({ id });
+  }
+
   /**
    * Batch lookup (one statement) keyed by id. Runs on the caller's manager so
    * it can share a transaction snapshot. Unknown ids are simply absent.

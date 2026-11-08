@@ -1,5 +1,8 @@
 import Decimal from 'decimal.js';
 
+/** Largest value of the `orders.size` INT column. */
+export const MAX_ORDER_SIZE = 2147483647;
+
 export type QuantityRequest = { size: number } | { amount: Decimal };
 
 /**
