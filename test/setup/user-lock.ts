@@ -1,10 +1,6 @@
 import { DataSource, QueryRunner } from 'typeorm';
 
-/**
- * Holds the same row lock that order placement takes (`users` row, FOR UPDATE)
- * from an independent connection, so tests can create contention
- * deterministically instead of racing real requests.
- */
+/** Holds the `users` row lock taken by order placement, to create contention deterministically. */
 export class HeldUserLock {
   private constructor(private readonly runner: QueryRunner) {}
 
@@ -61,7 +57,6 @@ export async function countIdleInTransaction(
   return Number(count);
 }
 
-/** Polls `condition` until true; fails with `description` after `timeoutMs`. */
 export async function waitUntil(
   condition: () => Promise<boolean>,
   description: string,

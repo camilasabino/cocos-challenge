@@ -83,12 +83,10 @@ describe('POST /orders failure handling and rollback', () => {
       });
       const text = JSON.stringify(response.body).toLowerCase();
       expect(text).not.toMatch(/55p03|lock timeout|postgres|query|relation/);
-      // It really waited for the configured timeout before giving up.
       expect(waited).toBeGreaterThanOrEqual(LOCK_TIMEOUT_MS - 50);
       expect(waited).toBeLessThan(LOCK_TIMEOUT_MS + 3000);
       expect(await orderRowsOf(dataSource, userId)).toEqual(before);
 
-      // The failed attempt left nothing behind: the next request just works.
       await buy(userId).expect(201);
       expect(await countIdleInTransaction(dataSource)).toBe(0);
     });
@@ -175,7 +173,6 @@ describe('POST /orders failure handling and rollback', () => {
       await expectUserLockFree(userId);
       expect(await countIdleInTransaction(dataSource)).toBe(0);
 
-      // And the very next request is unaffected (the spy only failed once).
       await buy(userId).expect(201);
     });
 

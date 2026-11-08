@@ -8,11 +8,7 @@ const DEFAULT_PORT = 3000;
 const DEFAULT_DB_LOCK_TIMEOUT_MS = 5000;
 const POSTGRES_PROTOCOLS = new Set(['postgres:', 'postgresql:']);
 
-/**
- * Validates and normalizes environment variables, failing fast at startup.
- * Error messages name the offending variables but never echo their values,
- * because DATABASE_URL carries credentials.
- */
+/** Error messages never echo values: DATABASE_URL carries credentials. */
 export function validateEnv(raw: Record<string, unknown>): Env {
   const errors: string[] = [];
 
@@ -55,7 +51,6 @@ function readString(value: unknown): string | undefined {
     : undefined;
 }
 
-/** Returns the fallback when unset, `null` when set but not a plain integer. */
 function readInteger(value: unknown, fallback: number): number | null {
   const text = readString(value);
   if (text === undefined) return fallback;

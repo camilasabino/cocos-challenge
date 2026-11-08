@@ -21,18 +21,15 @@ import {
   StorageUnavailableError,
 } from './order-placement.store';
 
-/** What the caller asks for; everything else is resolved while placing. */
 export interface PlaceOrderCommand {
   userId: number;
   instrumentId: number;
   side: OrderSide.BUY | OrderSide.SELL;
   type: OrderType;
   quantity: QuantityRequest;
-  /** Required for LIMIT, null for MARKET (the DTO enforces it). */
   limitPrice: Decimal | null;
 }
 
-/** An order as persisted, plus the response-only rejection reason. */
 export interface PlacedOrder {
   id: number;
   userId: number;
@@ -52,12 +49,7 @@ export class OrdersService {
 
   constructor(private readonly store: OrderPlacementStore) {}
 
-  /**
-   * Places one order in a single transaction. The user lock is taken first, so
-   * balances are read only after earlier placements for that user committed.
-   * Every read and the insert run in the same transaction. Any error rolls it
-   * back; a REJECTED order is a successful outcome and is committed.
-   */
+  /** A REJECTED order is a successful outcome and is committed; any error rolls back. */
   async placeOrder(command: PlaceOrderCommand): Promise<PlacedOrder> {
     const instrument = await this.store.findInstrument(command.instrumentId);
     if (!instrument) {
@@ -82,7 +74,9 @@ export class OrdersService {
       );
     } catch (error) {
       if (error instanceof StorageUnavailableError) {
-        // Lock timeout or unreachable database: nothing was committed.
+        // Not a guarantee that nothing was committed: a connection failure
+        // during COMMIT is ambiguous, and without idempotency a retry may
+        // duplicate the order.
         this.logger.warn(
           `Order placement unavailable (database error ${error.reason}) for user ${command.userId}`,
         );
@@ -167,7 +161,6 @@ export class OrdersService {
     };
   }
 
-  /** MARKET executes at the latest close; LIMIT at the requested price. */
   private async resolvePrice(
     tx: OrderPlacementTx,
     command: PlaceOrderCommand,
@@ -180,8 +173,7 @@ export class OrdersService {
     }
 
     const close = (await tx.findLatestPrice(command.instrumentId))?.close;
-    // A non-positive close cannot execute an order (it would be free or
-    // meaningless), so it counts as no usable price. Data is not corrected.
+    // A non-positive close counts as no usable price; data is not corrected.
     if (!close || close.lessThanOrEqualTo(0)) {
       throw new AppError(
         422,

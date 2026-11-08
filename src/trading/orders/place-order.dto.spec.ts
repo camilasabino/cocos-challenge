@@ -17,7 +17,6 @@ async function errorsFor(body: Record<string, unknown>) {
   );
 }
 
-/** Distinct property names that failed (one property may fail several rules). */
 const fields = async (body: Record<string, unknown>) => [
   ...new Set((await errorsFor(body)).map((message) => message.split(':')[0])),
 ];

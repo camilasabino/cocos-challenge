@@ -18,7 +18,6 @@ export class InstrumentsController {
     @Query() { q, limit }: SearchInstrumentsDto,
   ): Promise<InstrumentSearchResult[]> {
     const found = await this.instruments.search(q, limit);
-    // Explicit mapping: the entity is never serialized directly.
     return found.map(({ id, ticker, name, type }) => ({
       id,
       ticker,

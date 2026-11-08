@@ -13,8 +13,7 @@ export class SearchInstrumentsDto {
   @Length(1, MAX_QUERY_LENGTH)
   q!: string;
 
-  // Only plain digit strings become numbers; anything else ("1.5", "1e1", "")
-  // is left as-is so that @IsInt rejects it instead of being silently coerced.
+  // Anything but plain digits is left as-is so @IsInt rejects it instead of coercing.
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value,
   )

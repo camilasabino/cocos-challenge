@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { AppError, ErrorBody } from './app-error';
 
-// Structural type: only what the filter needs from the HTTP adapter's response.
 interface JsonResponse {
   status(code: number): { json(body: unknown): unknown };
 }
@@ -17,11 +16,7 @@ const FRAMEWORK_ERROR_CODES: Record<number, string> = {
   404: 'NOT_FOUND', // unknown route
 };
 
-/**
- * Single place where errors become HTTP responses with the documented body
- * `{ statusCode, code, message, details? }`. Unexpected errors are logged and
- * answered with a generic 500, so infrastructure details never reach clients.
- */
+/** Unexpected errors become a generic 500 so infrastructure details never reach clients. */
 @Catch()
 export class AppExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(AppExceptionFilter.name);

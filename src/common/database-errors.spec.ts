@@ -4,7 +4,7 @@ import {
   isTemporarilyUnavailable,
 } from './database-errors';
 
-/** Mimics TypeORM's QueryFailedError: driver fields are copied onto the error and kept in `driverError`. */
+/** Mimics QueryFailedError: driver fields are copied and kept in `driverError`. */
 function queryFailed(code: string): Error {
   const driverError = Object.assign(new Error('driver message'), { code });
   return Object.assign(new Error('query failed'), { code, driverError });

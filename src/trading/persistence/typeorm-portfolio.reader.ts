@@ -17,12 +17,7 @@ export class TypeOrmPortfolioReader implements PortfolioReader {
     private readonly marketData: MarketDataRepository,
   ) {}
 
-  /**
-   * REPEATABLE READ + READ ONLY: every query sees the same committed state, so
-   * orders, prices and instruments cannot disagree because of a concurrent
-   * write. In PostgreSQL this takes no row locks and never blocks (or is
-   * blocked by) order placement.
-   */
+  /** REPEATABLE READ + READ ONLY: one snapshot, no row locks, never blocks order placement. */
   async inSnapshot<T>(
     work: (snapshot: PortfolioSnapshot) => Promise<T>,
   ): Promise<T> {
@@ -30,7 +25,7 @@ export class TypeOrmPortfolioReader implements PortfolioReader {
     await queryRunner.connect();
     try {
       await queryRunner.startTransaction('REPEATABLE READ');
-      // Must be the first statement of the transaction, before the snapshot is taken.
+      // Must run before any query, i.e. before the snapshot is taken.
       await queryRunner.query('SET TRANSACTION READ ONLY');
       const result = await work(this.snapshotOver(queryRunner.manager));
       await queryRunner.commitTransaction();

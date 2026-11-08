@@ -2,7 +2,6 @@ import Decimal from 'decimal.js';
 import { LatestPrice } from '../../market-data/latest-price';
 import { AccountLedger, Holding, averageCost } from './account-ledger';
 
-/** The instrument attributes a position needs. */
 export interface InstrumentInfo {
   id: number;
   ticker: string | null;
@@ -15,27 +14,17 @@ export interface Position {
   name: string | null;
   /** Negative only for oversold historical data, which is never corrected. */
   quantity: number;
-  /** Latest close; null when the instrument has no usable price. */
   lastPrice: Decimal | null;
-  /** Null when the instrument has no usable price. */
   marketValue: Decimal | null;
-  /** Weighted-average cost; independent of price, null without a supported cost basis. */
   averageCost: Decimal | null;
-  /**
-   * Unrealized return of the current position on its cost basis, in percent.
-   * Null without a price or without a supported, non-zero cost basis.
-   */
   totalReturnPercent: Decimal | null;
-  /**
-   * Instrument price change `close` vs `previousClose`, in percent (not an
-   * investment return). Null without a price or a non-zero previous close.
-   */
+  /** Instrument price change vs previous close, not the investor's return. */
   dailyPriceChangePercent: Decimal | null;
 }
 
 export interface Portfolio {
   userId: number;
-  /** Null whenever `valuationComplete` is false: a partial total is never reported. */
+  /** Null unless `valuationComplete`: a partial total is never reported. */
   totalAccountValue: Decimal | null;
   cashBalance: Decimal;
   availableCash: Decimal;
@@ -47,24 +36,17 @@ export interface Portfolio {
 export interface PortfolioInput {
   userId: number;
   ledger: AccountLedger;
-  /** Must contain every instrument with a non-zero holding. */
   instruments: ReadonlyMap<number, InstrumentInfo>;
-  /** Instruments without a usable price are simply absent. */
   prices: ReadonlyMap<number, LatestPrice>;
 }
 
-/** Ids of the instruments the account holds (quantity ≠ 0), i.e. those to be listed and valued. */
 export function openPositionInstrumentIds(ledger: AccountLedger): number[] {
   return [...ledger.holdings]
     .filter(([, holding]) => holding.quantity !== 0)
     .map(([instrumentId]) => instrumentId);
 }
 
-/**
- * Values an account from its ledger at the latest prices. Pure: no I/O, no rounding —
- * results keep full Decimal precision and are rounded only when serialized.
- * Positions are ordered by ticker (code-unit order, nulls last), then id.
- */
+/** No rounding here: Decimals are rounded only when serialized. */
 export function valuePortfolio(input: PortfolioInput): Portfolio {
   const { userId, ledger, instruments, prices } = input;
 
@@ -109,7 +91,7 @@ function valuePosition(
 ): Position {
   const marketValue = price ? price.close.mul(holding.quantity) : null;
 
-  // Return needs a supported, non-zero cost basis, which only long positions have.
+  // Only long positions have a supported cost basis.
   const costBasis = holding.quantity > 0 ? holding.costBasis : null;
   const totalReturnPercent =
     marketValue !== null && costBasis !== null
@@ -134,7 +116,6 @@ function valuePosition(
   };
 }
 
-/** `(to - from) / from * 100`; null when `from` is zero. */
 function percentChange(from: Decimal, to: Decimal): Decimal | null {
   if (from.isZero()) return null;
   return to.minus(from).div(from).mul(100);

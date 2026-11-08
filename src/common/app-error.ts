@@ -5,11 +5,6 @@ export interface ErrorBody {
   details?: unknown[];
 }
 
-/**
- * Application error with a stable, machine-readable `code`. The HTTP status is
- * carried here so a single exception filter can translate it at the transport
- * boundary without every caller depending on Nest's HttpException.
- */
 export class AppError extends Error {
   constructor(
     readonly statusCode: number,

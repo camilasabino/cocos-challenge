@@ -1,19 +1,12 @@
 import Decimal from 'decimal.js';
 
-/** Largest value of the `orders.size` INT column. */
 export const MAX_ORDER_SIZE = 2147483647;
 
 export type QuantityRequest = { size: number } | { amount: Decimal };
 
 /**
- * Resolves the number of shares for an order.
- *
- * - `{ size }`: returned as is (must be a positive integer).
- * - `{ amount }`: ARS amount converted to the maximum whole number of shares
- *   affordable at `price`, i.e. an exact `floor(amount / price)`. The result
- *   may be 0 when the amount is below the price; the caller decides how to treat that.
- *
- * Does not bound the result to the `orders.size` INT column; the caller must.
+ * `{ amount }` resolves to an exact `floor(amount / price)`, which may be 0.
+ * The result is not bounded to the `orders.size` INT column; the caller must.
  */
 export function resolveQuantity(
   request: QuantityRequest,

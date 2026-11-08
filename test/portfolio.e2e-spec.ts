@@ -12,10 +12,9 @@ import { TestOrder, insertTestOrders } from './setup/create-test-orders';
 import { createTestUser } from './setup/create-test-user';
 
 /**
- * Extra instruments for price edge cases the shared fixtures do not cover.
- * They are created here and removed afterwards, so other suites never see them.
- * Rows are listed in insertion order (ids ascend), which is what the
- * "latest price" scenarios depend on.
+ * Extra instruments for price edge cases, created here and removed afterwards.
+ * Rows are listed in insertion order (ids ascend), which "latest price"
+ * scenarios depend on.
  */
 const EXTRA_INSTRUMENTS: readonly {
   ticker: string;
@@ -101,7 +100,6 @@ describe('GET /users/:userId/portfolio', () => {
     return response.body as PortfolioResponse;
   }
 
-  /** A user with the given orders (inserted in array order). */
   async function userWith(orders: readonly TestOrder[]): Promise<number> {
     const userId = await createTestUser(dataSource);
     await insertTestOrders(dataSource, userId, orders, idOf);
@@ -205,7 +203,6 @@ describe('GET /users/:userId/portfolio', () => {
         filled('BUY', 'ALFA', 100, '100.00', '2026-11-03 10:00:00'),
         filled('BUY', 'ALFA', 50, '104.00', '2026-11-03 11:00:00'),
         filled('BUY', 'GAMA', 1000, '10.00', '2026-11-03 12:00:00'),
-        // Opened and fully closed: must not be listed.
         filled('BUY', 'DELT', 10, '20.00', '2026-11-03 13:00:00'),
         filled('SELL', 'DELT', 10, '21.00', '2026-11-04 11:00:00'),
         {
@@ -293,7 +290,6 @@ describe('GET /users/:userId/portfolio', () => {
         limit('BUY', 'ALFAB', 200, '50.00', 'NEW'), // reserves 10,000
         limit('BUY', 'ALFA', 10, '90.00', 'NEW'), // reserves 900
         limit('SELL', 'ALFA', 40, '200.00', 'NEW'), // reserves shares, not cash
-        // Not part of the ledger at all.
         limit('BUY', 'GAMA', 1000, '10.00', 'REJECTED'),
         limit('SELL', 'ALFA', 100, '100.00', 'CANCELLED'),
       ]);
@@ -389,7 +385,6 @@ describe('GET /users/:userId/portfolio', () => {
       expect(body.valuationComplete).toBe(false);
       expect(body.totalAccountValue).toBeNull();
       expect(body.unpricedInstrumentIds).toEqual([fixtureInstrumentId('NODT')]);
-      // The cash side is still reported, and the priced position is valued.
       expect(body.cashBalance).toBe('8950.00');
       expect(body.availableCash).toBe('8950.00');
       expect(position(body, 'ALFA')).toMatchObject({ marketValue: '1050.00' });
@@ -493,7 +488,6 @@ describe('GET /users/:userId/portfolio', () => {
   });
 
   describe('query budget', () => {
-    /** SQL text of every statement sent to PostgreSQL while `run` executes. */
     async function statementsDuring(
       run: () => Promise<unknown>,
     ): Promise<string[]> {

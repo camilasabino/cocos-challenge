@@ -24,7 +24,6 @@ import { PortfolioService } from './portfolio/portfolio.service';
   providers: [
     OrdersService,
     PortfolioService,
-    // Application-owned ports bound to their TypeORM adapters.
     { provide: OrderPlacementStore, useClass: TypeOrmOrderPlacementStore },
     { provide: PortfolioReader, useClass: TypeOrmPortfolioReader },
     TradingRepository,

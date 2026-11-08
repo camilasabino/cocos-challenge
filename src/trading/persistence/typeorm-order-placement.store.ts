@@ -32,13 +32,9 @@ export class TypeOrmOrderPlacementStore implements OrderPlacementStore {
   }
 
   /**
-   * Concurrency: the caller locks the user's row first (`SELECT … FOR UPDATE`),
-   * so every placement for that user is serialized by PostgreSQL itself —
-   * across processes and instances. READ COMMITTED is required: each statement
-   * sees the latest committed state, including what the previous lock holder
-   * just wrote; a REPEATABLE READ snapshot would predate the lock wait and
-   * miss it. Only the user's row is locked, so placements cannot deadlock with
-   * each other.
+   * READ COMMITTED is required: after waiting on the user's row lock, each
+   * statement must see what the previous holder committed. A REPEATABLE READ
+   * snapshot would predate the wait and miss it.
    */
   async inTransaction<T>(
     work: (tx: OrderPlacementTx) => Promise<T>,
@@ -47,8 +43,7 @@ export class TypeOrmOrderPlacementStore implements OrderPlacementStore {
       return await this.dataSource.transaction(
         'READ COMMITTED',
         async (manager) => {
-          // `lock_timeout` cannot be parameterized in SET; set_config(…, true) is
-          // the transaction-local equivalent of SET LOCAL and takes a bound value.
+          // SET LOCAL cannot take a bound value; set_config(…, true) is equivalent.
           await manager.query(`SELECT set_config('lock_timeout', $1, true)`, [
             `${this.config.get('DB_LOCK_TIMEOUT_MS', { infer: true })}ms`,
           ]);

@@ -2,7 +2,6 @@ import Decimal from 'decimal.js';
 import { formatMoney, formatPercent } from '../../common/decimal';
 import { Portfolio, Position } from '../domain/portfolio-valuation';
 
-/** Public contract of `GET /users/:userId/portfolio`. */
 export interface PositionResponse {
   instrumentId: number;
   ticker: string | null;
@@ -25,11 +24,7 @@ export interface PortfolioResponse {
   positions: PositionResponse[];
 }
 
-/**
- * The only place where this endpoint turns Decimals into strings: money and
- * percentages are rounded HALF_UP to 2 decimals here and never converted to
- * JS numbers.
- */
+/** The only place Decimals are rounded (HALF_UP, 2 decimals); never converted to JS numbers. */
 export function toPortfolioResponse(portfolio: Portfolio): PortfolioResponse {
   return {
     userId: portfolio.userId,

@@ -2,58 +2,39 @@ import Decimal from 'decimal.js';
 import { ZERO } from '../../common/decimal';
 import { OrderSide, OrderStatus, OrderType } from './order.types';
 
-/** One row of `orders`, already converted to domain types by the persistence layer. */
 export interface LedgerOrder {
   id: number;
   instrumentId: number;
   side: OrderSide;
-  /** Not used in calculations: a FILLED LIMIT order counts like a FILLED MARKET one. */
+  /** Unused: a FILLED LIMIT order counts like a FILLED MARKET one. */
   type: OrderType;
   status: OrderStatus;
   /** Shares for BUY/SELL; ARS amount for CASH_IN/CASH_OUT. */
   size: number;
-  /** Unit price. Ignored for cash orders, so it may be null there. */
   price: Decimal | null;
   datetime: Date;
 }
 
 export interface Holding {
-  /** FILLED shares: buys minus sells. Negative only when historical data oversold the position. */
+  /** Negative only when historical data oversold the position. */
   quantity: number;
-  /**
-   * Weighted-average cost basis of the open position. Zero when flat; null when
-   * `quantity < 0` (an oversold position has no supported cost basis).
-   */
+  /** Null when `quantity < 0`: an oversold position has no supported cost basis. */
   costBasis: Decimal | null;
-  /** Shares committed to NEW SELL orders. */
   reservedShares: number;
 }
 
 export interface AccountLedger {
-  /** Executed cash: FILLED movements only. */
   cashBalance: Decimal;
-  /** Cash committed to NEW BUY orders. */
   reservedCash: Decimal;
-  /** `cashBalance - reservedCash`. */
   availableCash: Decimal;
-  /**
-   * Instruments touched by a FILLED BUY/SELL or a NEW SELL. Closed positions
-   * are kept with `quantity: 0`; consumers decide whether to list them.
-   */
+  /** Closed positions are kept with `quantity: 0`. */
   holdings: Map<number, Holding>;
 }
 
 /**
- * Folds a user's orders into cash balance, reservations and holdings.
- *
- * - FILLED: moves cash and shares. Processed chronologically (`datetime`, then
- *   `id`) because the cost basis depends on the order of purchases and sales.
- * - NEW BUY reserves `size * price` cash; NEW SELL reserves `size` shares.
- *   NEW cash transfers reserve nothing.
- * - CANCELLED and REJECTED are ignored.
- *
- * The input is not mutated and need not be sorted. Throws if a counted order
- * carries data that cannot be valued (non-integer/negative size, missing price).
+ * FILLED orders are processed chronologically (`datetime`, then `id`) because
+ * the cost basis depends on the order of purchases and sales. NEW BUY/SELL
+ * orders only reserve cash/shares. Throws on counted orders that cannot be valued.
  */
 export function buildAccountLedger(
   orders: readonly LedgerOrder[],
@@ -120,7 +101,6 @@ export function buildAccountLedger(
   };
 }
 
-/** `costBasis / quantity`; null when there is no supported cost basis or the position is not long. */
 export function averageCost(holding: Holding): Decimal | null {
   if (holding.costBasis === null || holding.quantity <= 0) return null;
   return holding.costBasis.div(holding.quantity);
@@ -147,7 +127,7 @@ function applySell(holding: Holding, size: number): void {
   const { quantity, costBasis } = holding;
 
   if (costBasis !== null && size <= quantity) {
-    // The sold shares leave at the current average cost, which therefore does not change.
+    // Sold shares leave at the current average cost, which stays unchanged.
     holding.costBasis =
       size === quantity ? ZERO : costBasis.mul(quantity - size).div(quantity);
   } else {

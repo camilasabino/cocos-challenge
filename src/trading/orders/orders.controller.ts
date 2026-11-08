@@ -16,7 +16,6 @@ export class OrdersController {
   }
 }
 
-/** DTO validation guarantees exactly one of size/amount and price iff LIMIT. */
 function toCommand(dto: PlaceOrderDto): PlaceOrderCommand {
   return {
     userId: dto.userId,

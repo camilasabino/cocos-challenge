@@ -14,13 +14,12 @@ import { isDecimalString, parseDecimal } from '../../common/decimal';
 import { OrderSide, OrderType } from '../domain/order.types';
 import { MAX_ORDER_SIZE } from '../domain/order-sizing';
 
-/** Largest id of the `users` / `instruments` INT primary keys. */
 const MAX_ID = 2147483647;
-/** Largest value of the NUMERIC(10,2) price columns. */
+/** NUMERIC(10,2) maximum. */
 export const MAX_MONEY = '99999999.99';
 const MONEY_DECIMALS = 2;
 
-/** Shared rule for `amount` and `price`: plain decimal string, 0 < v <= MAX_MONEY, at most 2 decimals. Invalid values are rejected, never rounded. */
+/** Invalid values are rejected, never rounded. */
 function isValidMoney(value: unknown): value is string {
   if (typeof value !== 'string' || !isDecimalString(value, MONEY_DECIMALS)) {
     return false;
@@ -31,7 +30,6 @@ function isValidMoney(value: unknown): value is string {
 
 const MONEY_RULE = `a decimal string greater than 0, up to ${MAX_MONEY}, with at most ${MONEY_DECIMALS} decimals`;
 
-/** `size`: required unless `amount` is given; then a whole number that fits the INT column. */
 @ValidatorConstraint({ name: 'orderSize', async: false })
 class OrderSizeConstraint implements ValidatorConstraintInterface {
   validate(value: unknown): boolean {
@@ -50,7 +48,6 @@ class OrderSizeConstraint implements ValidatorConstraintInterface {
   }
 }
 
-/** `amount`: a valid money string, and never together with `size`. */
 @ValidatorConstraint({ name: 'orderAmount', async: false })
 class OrderAmountConstraint implements ValidatorConstraintInterface {
   validate(value: unknown, args: ValidationArguments): boolean {
@@ -66,7 +63,6 @@ class OrderAmountConstraint implements ValidatorConstraintInterface {
   }
 }
 
-/** `price`: required for LIMIT, forbidden for MARKET, valid money when present. */
 @ValidatorConstraint({ name: 'orderPrice', async: false })
 class OrderPriceConstraint implements ValidatorConstraintInterface {
   validate(value: unknown, args: ValidationArguments): boolean {
@@ -87,11 +83,9 @@ class OrderPriceConstraint implements ValidatorConstraintInterface {
 }
 
 /**
- * Body of `POST /orders`. Numbers are never coerced from strings and
- * money travels as decimal strings, so no float ever touches a price.
- * Cross-field rules live in the constraints above because class-validator
- * evaluates them per property: exactly one of `size`/`amount`, and `price`
- * if and only if the type is LIMIT.
+ * Money travels as decimal strings, so no float ever touches a price.
+ * Cross-field rules live in the constraints because class-validator
+ * evaluates them per property.
  */
 export class PlaceOrderDto {
   @IsInt()

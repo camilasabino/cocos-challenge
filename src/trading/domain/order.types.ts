@@ -17,7 +17,6 @@ export enum OrderStatus {
   CANCELLED = 'CANCELLED',
 }
 
-/** Response-only: explains why a placed order was persisted as REJECTED. */
 export enum RejectionReason {
   INSUFFICIENT_FUNDS = 'INSUFFICIENT_FUNDS',
   INSUFFICIENT_SHARES = 'INSUFFICIENT_SHARES',

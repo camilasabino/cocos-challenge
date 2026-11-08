@@ -6,7 +6,6 @@ export interface TestOrder {
   ticker: string;
   side: 'BUY' | 'SELL' | 'CASH_IN' | 'CASH_OUT';
   size: number;
-  /** Decimal string; cash movements use `1.00`, like the demo data. */
   price: string;
   type?: 'MARKET' | 'LIMIT';
   status?: 'FILLED' | 'NEW' | 'REJECTED' | 'CANCELLED';
@@ -14,7 +13,7 @@ export interface TestOrder {
   datetime: string;
 }
 
-/** Inserts orders in the given order (ids follow the array, not `datetime`). */
+/** Ids follow the array order, not `datetime`. */
 export async function insertTestOrders(
   dataSource: DataSource,
   userId: number,

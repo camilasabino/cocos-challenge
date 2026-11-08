@@ -1,6 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-/** Maps the provided `instruments` table; every column is nullable there. */
 @Entity({ name: 'instruments' })
 export class Instrument {
   @PrimaryGeneratedColumn({ name: 'id' })

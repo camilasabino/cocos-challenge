@@ -6,10 +6,6 @@ import {
 import { MARKET_DATA_FIXTURES } from '../fixtures/market-data';
 import { assertConnectedToTestDatabase } from './test-database';
 
-/**
- * Empties every table (restarting ids) and loads the deterministic fixtures,
- * atomically. Refuses to run unless connected to the test database.
- */
 export async function resetDatabaseWithFixtures(
   dataSource: DataSource,
 ): Promise<void> {

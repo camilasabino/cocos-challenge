@@ -4,7 +4,6 @@ import { EntityManager, Repository } from 'typeorm';
 import { Instrument } from './instrument.entity';
 import { escapeLikePattern } from './like-pattern';
 
-/** Plain instrument data; the ORM entity never leaves this repository. */
 export interface InstrumentRecord {
   id: number;
   ticker: string | null;
@@ -14,7 +13,6 @@ export interface InstrumentRecord {
 
 export interface InstrumentSearch {
   text: string;
-  /** Rows of this type are never returned. */
   excludedType: string;
   limit: number;
 }
@@ -26,12 +24,7 @@ export class InstrumentsRepository {
     private readonly instruments: Repository<Instrument>,
   ) {}
 
-  /**
-   * Case-insensitive substring search on ticker or name.
-   * Ranking: exact ticker, then ticker prefix, then any other match; ties are
-   * broken by ticker and finally id, so the order is fully deterministic.
-   * All user input travels as bound parameters, with LIKE wildcards escaped.
-   */
+  /** Ranking: exact ticker, ticker prefix, other matches; ties by ticker, then id. */
   async search({
     text,
     excludedType,
@@ -68,10 +61,6 @@ export class InstrumentsRepository {
     return found && toRecord(found);
   }
 
-  /**
-   * Batch lookup (one statement) keyed by id. Runs on the caller's manager so
-   * it can share a transaction snapshot. Unknown ids are simply absent.
-   */
   async findByIds(
     manager: EntityManager,
     ids: readonly number[],

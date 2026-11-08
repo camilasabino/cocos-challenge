@@ -32,7 +32,6 @@ describe('POST /orders concurrency (per-user row lock, READ COMMITTED)', () => {
     await app.close();
   });
 
-  /** The database's current UTC time at millisecond precision, like stored timestamps. */
   async function utcClockNow(): Promise<string> {
     const [{ now }] = await dataSource.query<{ now: string }[]>(
       `SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS now`,
@@ -71,7 +70,7 @@ describe('POST /orders concurrency (per-user row lock, READ COMMITTED)', () => {
       .find((order) => order.status === 'REJECTED');
     expect(rejected?.rejectionReason).toBe('INSUFFICIENT_FUNDS');
 
-    expect(await orderRowsOf(dataSource, userId)).toHaveLength(3); // CASH_IN + 2
+    expect(await orderRowsOf(dataSource, userId)).toHaveLength(3);
     const portfolio = await getPortfolio(app, userId);
     expect(portfolio.cashBalance).toBe('370.00');
     expect(Number(portfolio.cashBalance)).toBeGreaterThanOrEqual(0);
@@ -84,8 +83,8 @@ describe('POST /orders concurrency (per-user row lock, READ COMMITTED)', () => {
     const userId = await userWithCash(1000);
     const lock = await HeldUserLock.acquire(dataSource, userId);
 
-    // Three BUYs of 420.00 each: only two fit in 1000.00. All of them first
-    // block on the lock held below, so the outcome cannot depend on timing.
+    // Three BUYs of 420.00 each: only two fit in 1000.00. All block on the lock
+    // held below, so the outcome cannot depend on timing.
     let responses: { status: number; body: unknown }[];
     let releasedAt = '';
     try {
@@ -98,12 +97,9 @@ describe('POST /orders concurrency (per-user row lock, READ COMMITTED)', () => {
         async () => (await countBackendsWaitingForUserLock(dataSource)) === 3,
         'three placements blocked on the user lock',
       );
-      // Nothing was written while the lock is held.
       expect(await orderRowsOf(dataSource, userId)).toHaveLength(1);
 
-      // The requests began their transactions before this instant; their rows
-      // must be stamped after it (when they actually got the lock), not at
-      // transaction start.
+      // Rows must be stamped after this instant (lock granted), not at transaction start.
       releasedAt = await utcClockNow();
       await lock.release();
       responses = await pending;
@@ -115,7 +111,7 @@ describe('POST /orders concurrency (per-user row lock, READ COMMITTED)', () => {
     expect(statuses(responses)).toEqual(['FILLED', 'FILLED', 'REJECTED']);
     expect((await getPortfolio(app, userId)).cashBalance).toBe('160.00');
 
-    const placed = (await orderRowsOf(dataSource, userId)).slice(1); // skip CASH_IN
+    const placed = (await orderRowsOf(dataSource, userId)).slice(1);
     expect(placed.map((row) => row.status)).toEqual([
       'FILLED',
       'FILLED',
@@ -159,7 +155,6 @@ describe('POST /orders concurrency (per-user row lock, READ COMMITTED)', () => {
       await lock.release().catch(() => undefined);
     }
 
-    // Whatever the queue order, the final state must be consistent with it.
     const portfolio = await getPortfolio(app, userId);
     const [first, second] = (await orderRowsOf(dataSource, userId)).slice(2);
     if (first.side === 'SELL') {

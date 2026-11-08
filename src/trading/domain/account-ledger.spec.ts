@@ -27,7 +27,7 @@ interface OrderSpec {
   datetime?: Date;
 }
 
-/** Builds an order; by default ids and timestamps grow together, so insertion order is chronological. */
+/** By default ids and timestamps grow together. */
 function order(spec: OrderSpec): LedgerOrder {
   const id = spec.id ?? nextId++;
   const isCash =
@@ -376,9 +376,6 @@ describe('buildAccountLedger', () => {
   });
 
   describe('account with the anomalies of the original challenge data', () => {
-    // Inline reproduction of one user's history: deposit and withdrawal, a
-    // partial sale, ignored CANCELLED/REJECTED orders, pending LIMIT buys, a
-    // FILLED LIMIT buy, and a sale larger than the holding.
     const PAMP = 47;
     const LOMA = 45;
     const BMA = 31;

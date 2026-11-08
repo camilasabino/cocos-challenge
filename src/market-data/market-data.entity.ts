@@ -1,9 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-/**
- * Maps the provided `marketdata` table. NUMERIC columns are read as strings
- * and converted to Decimal by the repository; every column is nullable there.
- */
 @Entity({ name: 'marketdata' })
 export class MarketData {
   @PrimaryGeneratedColumn({ name: 'id' })
@@ -57,7 +53,6 @@ export class MarketData {
   })
   previousClose!: string | null;
 
-  /** Calendar day (`YYYY-MM-DD`); the schema column is a DATE, not a timestamp. */
   @Column({ name: 'date', type: 'date', nullable: true })
   date!: string | null;
 }

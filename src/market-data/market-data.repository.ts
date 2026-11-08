@@ -13,15 +13,9 @@ interface LatestPriceRow {
 @Injectable()
 export class MarketDataRepository {
   /**
-   * Latest quote per instrument in a single statement: the row with the most
-   * recent `date`, ties broken by the highest `id` (the schema does not
-   * guarantee one row per instrument and day).
-   *
-   * Instruments without market data, or whose latest row has no `close`, are
-   * absent from the result: an older close would be a silently stale price.
-   *
-   * Runs on the given manager so callers can read prices from the same
-   * snapshot as the rest of their data.
+   * Latest row by `date`, ties broken by highest `id` (the schema does not
+   * guarantee one row per instrument and day). A latest row without `close` is
+   * omitted: falling back to an older close would be a silently stale price.
    */
   async findLatestByInstrumentIds(
     manager: EntityManager,

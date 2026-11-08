@@ -1,14 +1,10 @@
 /**
- * Classification of PostgreSQL / driver failures that mean "try again later"
- * rather than "the request or the code is wrong". Kept free of TypeORM types:
- * TypeORM copies the driver's fields (`code`) onto its QueryFailedError and also
- * keeps the original under `driverError`, so both are inspected.
+ * TypeORM copies the driver's `code` onto its QueryFailedError and keeps the
+ * original under `driverError`, so both are inspected.
  */
 
-/** SQLSTATE `lock_not_available`: `lock_timeout` expired while waiting for a lock. */
 const LOCK_NOT_AVAILABLE = '55P03';
 
-/** SQLSTATE values of a server that is shutting down or cannot accept connections. */
 const UNAVAILABLE_SQLSTATES = new Set([
   '57P01', // admin_shutdown
   '57P02', // crash_shutdown
@@ -16,7 +12,6 @@ const UNAVAILABLE_SQLSTATES = new Set([
   '53300', // too_many_connections
 ]);
 
-/** Node socket errors raised when the database cannot be reached or drops the link. */
 const UNAVAILABLE_NODE_CODES = new Set([
   'ECONNREFUSED',
   'ECONNRESET',
@@ -36,7 +31,6 @@ export function isLockTimeout(error: unknown): boolean {
   return errorCodes(error).includes(LOCK_NOT_AVAILABLE);
 }
 
-/** True when the error is a lock timeout or the database is unreachable. */
 export function isTemporarilyUnavailable(error: unknown): boolean {
   if (isLockTimeout(error)) return true;
   if (
@@ -53,7 +47,7 @@ export function isTemporarilyUnavailable(error: unknown): boolean {
   return UNAVAILABLE_MESSAGES.some((fragment) => message.includes(fragment));
 }
 
-/** Short, value-free label for logs (never the message: it may carry connection details). */
+/** Never the message: it may carry connection details. */
 export function describeDatabaseError(error: unknown): string {
   return errorCodes(error)[0] ?? 'unknown';
 }

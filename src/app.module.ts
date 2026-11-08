@@ -16,8 +16,6 @@ import { TradingModule } from './trading/trading.module';
         // The schema is owned by db/init/*.sql. TypeORM must never alter it.
         synchronize: false,
         migrationsRun: false,
-        // Entities are registered explicitly by each feature module via
-        // TypeOrmModule.forFeature([...]); no glob scanning.
         autoLoadEntities: true,
       }),
     }),

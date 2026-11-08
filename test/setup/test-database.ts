@@ -3,7 +3,6 @@ import { DataSource } from 'typeorm';
 export const TEST_DATABASE_NAME = 'cocos_test';
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
-/** Loads `.env` when present; variables already in the environment win. */
 export function loadLocalEnv(): void {
   try {
     process.loadEnvFile('.env');
@@ -13,10 +12,8 @@ export function loadLocalEnv(): void {
 }
 
 /**
- * Returns TEST_DATABASE_URL only if it targets the `cocos_test` database on
- * this machine. Test setup truncates tables, so anything else (the `cocos`
- * demo database, a remote server) is refused. Messages never echo the URL
- * because it carries credentials.
+ * Test setup truncates tables, so only `cocos_test` on this machine is
+ * accepted. Messages never echo the URL: it carries credentials.
  */
 export function resolveTestDatabaseUrl(
   env: NodeJS.ProcessEnv = process.env,
@@ -48,7 +45,6 @@ export function resolveTestDatabaseUrl(
   return raw;
 }
 
-/** Second line of defense: verifies the live connection, not just the URL. */
 export async function assertConnectedToTestDatabase(
   dataSource: DataSource,
 ): Promise<void> {

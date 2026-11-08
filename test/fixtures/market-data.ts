@@ -8,11 +8,7 @@ export interface MarketDataFixture {
   previousClose: string;
 }
 
-/**
- * Deterministic market data for two consecutive days. Rows are inserted in
- * array order, so for SIGM the second 2026-11-06 row has the higher id and is
- * the latest price. NODT intentionally has no rows.
- */
+/** SIGM's second 2026-11-06 row has the higher id, so it is the latest price. NODT has no rows. */
 export const MARKET_DATA_FIXTURES: readonly MarketDataFixture[] = [
   {
     ticker: 'ALFA',

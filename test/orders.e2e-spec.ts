@@ -24,7 +24,6 @@ const SIGM = fixtureInstrumentId('SIGM');
 const NODT = fixtureInstrumentId('NODT');
 const ARS = fixtureInstrumentId('ARS');
 
-/** Extra instruments for price edge cases; created here and removed afterwards. */
 const EXTRA_INSTRUMENTS = {
   // Latest close is 0.00: not a usable execution price.
   OZRO: [{ date: '2026-11-06', close: '0.00' }],
@@ -77,7 +76,6 @@ describe('POST /orders', () => {
   const idOf = (ticker: string): number =>
     extraIds.get(ticker) ?? fixtureInstrumentId(ticker);
 
-  /** A user holding the given seed orders (inserted in array order). */
   async function userWith(...orders: TestOrder[]): Promise<number> {
     const userId = await createTestUser(dataSource);
     await insertTestOrders(dataSource, userId, orders, idOf);
@@ -135,7 +133,7 @@ describe('POST /orders', () => {
         status: 'FILLED',
         datetime: body(response).datetime,
       });
-      expect(rows).toHaveLength(2); // the CASH_IN and the new order
+      expect(rows).toHaveLength(2);
 
       const portfolio = await getPortfolio(app, userId);
       expect(portfolio).toMatchObject({
@@ -190,10 +188,10 @@ describe('POST /orders', () => {
     it.each([
       ['1000.00', 9], // floor(1000 / 105)
       ['210.00', 2], // exact division
-      ['105.00', 1], // exactly one share
+      ['105.00', 1],
       ['209.99', 1],
-      ['1000', 9], // no decimals
-      ['1000.5', 9], // one decimal
+      ['1000', 9],
+      ['1000.5', 9],
     ])('MARKET BUY amount %s buys %i whole shares', async (amount, shares) => {
       const userId = await userWith(cashInOrder(100000));
 

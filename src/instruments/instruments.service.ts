@@ -9,7 +9,6 @@ import {
 export class InstrumentsService {
   constructor(private readonly instruments: InstrumentsRepository) {}
 
-  /** Cash is not tradable, so search never offers it. */
   search(query: string, limit: number): Promise<InstrumentRecord[]> {
     return this.instruments.search({
       text: query,

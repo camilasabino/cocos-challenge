@@ -13,15 +13,13 @@ import {
 } from './setup/order-requests';
 
 const ALFA = fixtureInstrumentId('ALFA');
-/** Neither is UTC; Tokyo is ahead of UTC and the default process zone is behind it. */
+/** Neither UTC nor the process zone. */
 const SESSION_TIME_ZONE = 'Asia/Tokyo';
 
 /**
- * `orders.datetime` is a TIMESTAMP without time zone that the whole app reads
- * as UTC. These tests run with a process zone that is not UTC (see
- * global-setup.ts) and a PostgreSQL session `TimeZone` that is neither UTC nor
- * the process zone, so any implicit conversion shifts the stored value by
- * hours and is caught by comparing against the database's own UTC clock.
+ * `orders.datetime` is a TIMESTAMP without time zone read as UTC. The process
+ * zone (see global-setup.ts) and the session TimeZone are both non-UTC, so any
+ * implicit conversion shifts the value by hours.
  */
 describe('POST /orders timestamps (UTC, independent of process and session zones)', () => {
   let app: INestApplication;
@@ -30,8 +28,7 @@ describe('POST /orders timestamps (UTC, independent of process and session zones
 
   beforeAll(async () => {
     previousPgOptions = process.env.PGOPTIONS;
-    // libpq-style startup option honored by node-postgres: every pooled
-    // connection of the app starts with this session TimeZone.
+    // Applied by node-postgres to every pooled connection.
     process.env.PGOPTIONS = `-c TimeZone=${SESSION_TIME_ZONE}`;
     app = await createTestApp();
     dataSource = app.get(DataSource);
@@ -156,7 +153,7 @@ describe('POST /orders timestamps (UTC, independent of process and session zones
       side: 'BUY',
       type: 'MARKET',
       size: 10,
-    }).expect(201); // 10 @ 105.00 now
+    }).expect(201);
     await postOrder(app, {
       userId,
       instrumentId: ALFA,

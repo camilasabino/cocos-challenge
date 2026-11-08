@@ -1,7 +1,6 @@
 import { formatMoney } from '../../common/decimal';
 import { PlacedOrder } from './orders.service';
 
-/** Wire format of an order. Money is a 2-decimal string; `datetime` is ISO-8601 UTC. */
 export interface OrderResponse {
   id: number;
   userId: number;

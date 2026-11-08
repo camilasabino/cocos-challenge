@@ -1,6 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-/** Maps the provided `users` table; `email` and `accountnumber` are nullable there. */
 @Entity({ name: 'users' })
 export class User {
   @PrimaryGeneratedColumn({ name: 'id' })

@@ -1,10 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-/**
- * Maps the provided `orders` table; every column except `id` is nullable
- * there. `price` (NUMERIC) is read as a string and `datetime` is a TIMESTAMP
- * without time zone, so the persistence layer converts both explicitly.
- */
 @Entity({ name: 'orders' })
 export class Order {
   @PrimaryGeneratedColumn({ name: 'id' })

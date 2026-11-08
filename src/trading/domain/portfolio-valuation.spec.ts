@@ -144,7 +144,6 @@ describe('valuePortfolio', () => {
       totalReturnPercent: null,
       dailyPriceChangePercent: null,
     });
-    // Cost-based information does not depend on the price.
     expect(text(unpriced.averageCost)).toBe('10');
   });
 
@@ -234,7 +233,6 @@ describe('valuePortfolio', () => {
     expect(portfolio.positions.map((p) => p.instrumentId)).toEqual([
       3, 5, 4, 1, 2,
     ]);
-    // Unpriced ids follow the position order.
     expect(portfolio.unpricedInstrumentIds).toEqual([3, 5, 4, 1, 2]);
   });
 

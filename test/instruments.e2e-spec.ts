@@ -27,13 +27,11 @@ describe('GET /instruments/search', () => {
       .get('/instruments/search')
       .query(params);
 
-  /** Runs a search that must succeed and returns the matching tickers in order. */
   async function tickers(params: Record<string, string>): Promise<string[]> {
     const response = await search(params).expect(200);
     return (response.body as SearchHit[]).map((hit) => hit.ticker);
   }
 
-  /** Asserts the documented 400 body, with every detail pointing at `field`. */
   function expectValidationError(body: unknown, field: string): void {
     expect(body).toMatchObject({
       statusCode: 400,
@@ -66,7 +64,6 @@ describe('GET /instruments/search', () => {
     });
 
     it('matches part of a ticker', async () => {
-      // "lf" is inside ALFA and ALFAB, and inside the name of BETA.
       expect(await tickers({ q: 'lf' })).toEqual(['ALFA', 'ALFAB', 'BETA']);
     });
 
@@ -94,7 +91,6 @@ describe('GET /instruments/search', () => {
 
   describe('ranking', () => {
     it('puts exact ticker, then ticker prefix, then other matches', async () => {
-      // ALFA exact, ALFAB prefix, BETA only through its name.
       expect(await tickers({ q: 'alfa' })).toEqual(['ALFA', 'ALFAB', 'BETA']);
     });
 
@@ -130,8 +126,6 @@ describe('GET /instruments/search', () => {
 
   describe('limit', () => {
     it('defaults to 20 results', async () => {
-      // Fixtures hold 9 searchable instruments, so the default cannot truncate
-      // them; this documents that omitting `limit` is valid.
       expect(await tickers({ q: 's' })).toHaveLength(8);
     });
 
@@ -207,7 +201,6 @@ describe('GET /instruments/search', () => {
 
     it('treats SQL syntax in the query as plain text', async () => {
       expect(await tickers({ q: "'; DROP TABLE instruments; --" })).toEqual([]);
-      // The table must still be there and searchable.
       expect(await tickers({ q: 'alfa' })).toEqual(['ALFA', 'ALFAB', 'BETA']);
     });
   });

@@ -5,7 +5,7 @@ import { DataSource } from 'typeorm';
 import type { OrderResponse } from '../../src/trading/orders/order.response';
 import type { PortfolioResponse } from '../../src/trading/portfolio/portfolio.response';
 
-/** Ordinary `POST /orders`; the body is deliberately untyped so tests can send invalid ones. */
+/** The body is untyped so tests can send invalid ones. */
 export function postOrder(app: INestApplication, body?: unknown) {
   return request(app.getHttpServer() as Server)
     .post('/orders')
@@ -24,7 +24,7 @@ export async function getPortfolio(
 
 export type { OrderResponse };
 
-/** Raw `orders` row; `datetime` is the stored UTC wall clock as an ISO string with `Z`. */
+/** `datetime` is the stored UTC wall clock as an ISO string with `Z`. */
 export interface OrderRow {
   id: number;
   instrumentid: number;

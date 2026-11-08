@@ -7,34 +7,24 @@ import {
   RejectionReason,
 } from './order.types';
 
-/** A priced, sized order the user wants to place. Only BUY and SELL can be placed. */
 export interface OrderIntent {
   side: OrderSide.BUY | OrderSide.SELL;
   type: OrderType;
   instrumentId: number;
-  /** Whole shares, already resolved and bounded by the caller. */
   quantity: number;
-  /** Execution price (MARKET: latest close) or limit price (LIMIT). */
   price: Decimal;
 }
 
 export interface OrderDecision {
   status: OrderStatus.FILLED | OrderStatus.NEW | OrderStatus.REJECTED;
-  /** Response-only explanation; null unless the order is REJECTED. */
   rejectionReason: RejectionReason | null;
 }
 
 /**
- * Decides the status a new order is persisted with, given the account state.
- * Insufficient cash or shares is not an error: the order is still persisted,
- * as REJECTED.
- *
- * - BUY needs `quantity * price` of available cash (cash minus NEW BUY reservations).
- * - SELL needs `quantity` available shares (held minus NEW SELL reservations).
- *   An instrument that is not held, or is held negative by historical data,
- *   has no available shares, so a new SELL can never create or deepen a short.
- * - Accepted MARKET orders execute immediately (FILLED); accepted LIMIT orders
- *   wait (NEW). Nothing here ever moves a NEW order to FILLED.
+ * Insufficient cash or shares is not an error: the order is persisted as
+ * REJECTED. Available shares exclude NEW SELL reservations, and a position that
+ * is not held or is negative (historical data) has none, so a SELL can never
+ * create or deepen a short. Nothing here moves a NEW order to FILLED.
  */
 export function decideOrder(
   ledger: AccountLedger,
