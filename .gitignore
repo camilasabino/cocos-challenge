@@ -3,3 +3,19 @@
 .idea/
 .vscode/
 
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+coverage/
+*.tsbuildinfo
+
+# Environment and secrets (the template stays versioned)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
