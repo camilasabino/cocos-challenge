@@ -14,6 +14,11 @@ export interface InstrumentFixture {
  *  - GAMA / DELT: names containing the LIKE wildcards "%" and "_"
  *  - NODT: no market data
  *  - SIGM: two market data rows on the same date
+ *  - CORE: its name contains the ticker "DELT" while sorting before it, to prove
+ *    that ranking (not alphabetical order) puts the exact ticker first
+ *  - BKSL: name containing a backslash
+ *
+ * New fixtures are appended so existing ids never change.
  */
 export const INSTRUMENT_FIXTURES: readonly InstrumentFixture[] = [
   { ticker: 'ARS', name: 'Peso Argentino', type: 'MONEDA' },
@@ -24,6 +29,8 @@ export const INSTRUMENT_FIXTURES: readonly InstrumentFixture[] = [
   { ticker: 'DELT', name: 'Delta_One S.A.', type: 'ACCIONES' },
   { ticker: 'NODT', name: 'Sin Datos S.A.', type: 'ACCIONES' },
   { ticker: 'SIGM', name: 'Sigma Mercados S.A.', type: 'ACCIONES' },
+  { ticker: 'CORE', name: 'Delt Core S.A.', type: 'ACCIONES' },
+  { ticker: 'BKSL', name: 'Back\\Slash S.A.', type: 'ACCIONES' },
 ];
 
 export function fixtureInstrumentId(ticker: string): number {

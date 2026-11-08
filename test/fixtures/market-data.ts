@@ -131,4 +131,22 @@ export const MARKET_DATA_FIXTURES: readonly MarketDataFixture[] = [
     close: '710.50',
     previousClose: '705.00',
   },
+  {
+    ticker: 'CORE',
+    date: '2026-11-06',
+    open: '30.00',
+    high: '31.00',
+    low: '29.50',
+    close: '30.50',
+    previousClose: '30.00',
+  },
+  {
+    ticker: 'BKSL',
+    date: '2026-11-06',
+    open: '40.00',
+    high: '41.00',
+    low: '39.50',
+    close: '40.50',
+    previousClose: '40.00',
+  },
 ];

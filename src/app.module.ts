@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Env, validateEnv } from './config/env';
+import { InstrumentsModule } from './instruments/instruments.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { Env, validateEnv } from './config/env';
         autoLoadEntities: true,
       }),
     }),
+    InstrumentsModule,
   ],
 })
 export class AppModule {}
