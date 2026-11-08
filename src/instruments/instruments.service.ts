@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { CASH_INSTRUMENT_TYPE, Instrument } from './instrument.entity';
 import { escapeLikePattern } from './like-pattern';
 
@@ -43,5 +43,21 @@ export class InstrumentsService {
       .addOrderBy('instrument.id', 'ASC')
       .limit(limit)
       .getMany();
+  }
+
+  /**
+   * Batch lookup (one statement) keyed by id. Runs on the caller's manager so
+   * it can share a transaction snapshot. Unknown ids are simply absent.
+   */
+  async findByIds(
+    manager: EntityManager,
+    ids: readonly number[],
+  ): Promise<Map<number, Instrument>> {
+    if (ids.length === 0) return new Map();
+    const found = await manager
+      .createQueryBuilder(Instrument, 'instrument')
+      .where('instrument.id = ANY(:ids)', { ids: [...ids] })
+      .getMany();
+    return new Map(found.map((instrument) => [instrument.id, instrument]));
   }
 }

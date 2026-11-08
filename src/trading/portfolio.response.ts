@@ -1,0 +1,66 @@
+import Decimal from 'decimal.js';
+import { formatMoney, formatPercent } from '../common/decimal';
+import { Portfolio, Position } from './portfolio-valuation';
+
+/** Public contract of `GET /users/:userId/portfolio` (plan §4.2). */
+export interface PositionResponse {
+  instrumentId: number;
+  ticker: string | null;
+  name: string | null;
+  quantity: number;
+  lastPrice: string | null;
+  marketValue: string | null;
+  averageCost: string | null;
+  totalReturnPercent: string | null;
+  dailyPriceChangePercent: string | null;
+}
+
+export interface PortfolioResponse {
+  userId: number;
+  totalAccountValue: string | null;
+  cashBalance: string;
+  availableCash: string;
+  valuationComplete: boolean;
+  unpricedInstrumentIds: number[];
+  positions: PositionResponse[];
+}
+
+/**
+ * The only place where Decimals become strings: money and percentages are
+ * rounded HALF_UP to 2 decimals here and never converted to JS numbers.
+ */
+export function toPortfolioResponse(portfolio: Portfolio): PortfolioResponse {
+  return {
+    userId: portfolio.userId,
+    totalAccountValue: nullable(portfolio.totalAccountValue, formatMoney),
+    cashBalance: formatMoney(portfolio.cashBalance),
+    availableCash: formatMoney(portfolio.availableCash),
+    valuationComplete: portfolio.valuationComplete,
+    unpricedInstrumentIds: portfolio.unpricedInstrumentIds,
+    positions: portfolio.positions.map(toPositionResponse),
+  };
+}
+
+function toPositionResponse(position: Position): PositionResponse {
+  return {
+    instrumentId: position.instrumentId,
+    ticker: position.ticker,
+    name: position.name,
+    quantity: position.quantity,
+    lastPrice: nullable(position.lastPrice, formatMoney),
+    marketValue: nullable(position.marketValue, formatMoney),
+    averageCost: nullable(position.averageCost, formatMoney),
+    totalReturnPercent: nullable(position.totalReturnPercent, formatPercent),
+    dailyPriceChangePercent: nullable(
+      position.dailyPriceChangePercent,
+      formatPercent,
+    ),
+  };
+}
+
+function nullable(
+  value: Decimal | null,
+  format: (value: Decimal) => string,
+): string | null {
+  return value === null ? null : format(value);
+}
