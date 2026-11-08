@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { AppError } from './common/app-error';
 import { AppExceptionFilter } from './common/app-exception.filter';
+import { setupOpenApi } from './openapi';
 
 export function configureApp(app: INestApplication): void {
   app.useGlobalPipes(
@@ -24,4 +25,5 @@ export function configureApp(app: INestApplication): void {
     }),
   );
   app.useGlobalFilters(new AppExceptionFilter());
+  setupOpenApi(app);
 }

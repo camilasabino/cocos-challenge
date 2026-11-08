@@ -2,11 +2,53 @@ export interface Env {
   DATABASE_URL: string;
   PORT: number;
   DB_LOCK_TIMEOUT_MS: number;
+  DB_POOL_MAX: number;
+  DB_POOL_ACQUIRE_TIMEOUT_MS: number;
 }
 
-const DEFAULT_PORT = 3000;
-const DEFAULT_DB_LOCK_TIMEOUT_MS = 5000;
 const POSTGRES_PROTOCOLS = new Set(['postgres:', 'postgresql:']);
+
+/** PostgreSQL `lock_timeout` is an int4 of milliseconds; 0 would disable it. */
+const POSTGRES_MAX_TIMEOUT_MS = 2_147_483_647;
+
+interface IntegerSetting {
+  name: keyof Env;
+  fallback: number;
+  min: number;
+  max: number;
+}
+
+const PORT: IntegerSetting = {
+  name: 'PORT',
+  fallback: 3000,
+  min: 1,
+  max: 65_535,
+};
+
+// Order placement is the only workflow that waits on a lock; it holds its
+// connection while waiting, so the lock wait is also bounded by the pool.
+const DB_LOCK_TIMEOUT_MS: IntegerSetting = {
+  name: 'DB_LOCK_TIMEOUT_MS',
+  fallback: 5_000,
+  min: 1,
+  max: POSTGRES_MAX_TIMEOUT_MS,
+};
+
+// Conservative for a single instance; PostgreSQL's default max_connections is
+// 100 and hosted databases often allow far fewer.
+const DB_POOL_MAX: IntegerSetting = {
+  name: 'DB_POOL_MAX',
+  fallback: 10,
+  min: 1,
+  max: 100,
+};
+
+const DB_POOL_ACQUIRE_TIMEOUT_MS: IntegerSetting = {
+  name: 'DB_POOL_ACQUIRE_TIMEOUT_MS',
+  fallback: 5_000,
+  min: 1,
+  max: 120_000,
+};
 
 /** Error messages never echo values: DATABASE_URL carries credentials. */
 export function validateEnv(raw: Record<string, unknown>): Env {
@@ -19,30 +61,31 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     );
   }
 
-  const port = readInteger(raw.PORT, DEFAULT_PORT);
-  if (port === null || port < 1 || port > 65535) {
-    errors.push('PORT must be an integer between 1 and 65535');
-  }
+  const integer = (setting: IntegerSetting): number => {
+    const value = readInteger(raw[setting.name], setting.fallback);
+    if (value === null || value < setting.min || value > setting.max) {
+      errors.push(
+        `${setting.name} must be an integer between ${setting.min} and ${setting.max}`,
+      );
+      return setting.fallback;
+    }
+    return value;
+  };
 
-  const lockTimeout = readInteger(
-    raw.DB_LOCK_TIMEOUT_MS,
-    DEFAULT_DB_LOCK_TIMEOUT_MS,
-  );
-  if (lockTimeout === null || lockTimeout < 1) {
-    errors.push('DB_LOCK_TIMEOUT_MS must be a positive integer');
-  }
+  const env: Env = {
+    DATABASE_URL: databaseUrl as string,
+    PORT: integer(PORT),
+    DB_LOCK_TIMEOUT_MS: integer(DB_LOCK_TIMEOUT_MS),
+    DB_POOL_MAX: integer(DB_POOL_MAX),
+    DB_POOL_ACQUIRE_TIMEOUT_MS: integer(DB_POOL_ACQUIRE_TIMEOUT_MS),
+  };
 
   if (errors.length > 0) {
     throw new Error(
       `Invalid environment configuration:\n- ${errors.join('\n- ')}`,
     );
   }
-
-  return {
-    DATABASE_URL: databaseUrl as string,
-    PORT: port as number,
-    DB_LOCK_TIMEOUT_MS: lockTimeout as number,
-  };
+  return env;
 }
 
 function readString(value: unknown): string | undefined {

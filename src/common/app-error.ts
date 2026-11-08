@@ -20,6 +20,14 @@ export class AppError extends Error {
     return new AppError(400, 'VALIDATION_ERROR', 'Validation failed', details);
   }
 
+  static serviceUnavailable(): AppError {
+    return new AppError(
+      503,
+      'SERVICE_UNAVAILABLE',
+      'The service is temporarily unavailable',
+    );
+  }
+
   toBody(): ErrorBody {
     return {
       statusCode: this.statusCode,

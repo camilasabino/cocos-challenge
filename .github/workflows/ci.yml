@@ -65,3 +65,19 @@ jobs:
           -f db/init/01-schema.sql
 
       - run: npm run test:e2e
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build production image
+        run: docker build --tag cocos-challenge:ci .
+
+      - name: Verify the image runs as non-root and holds no private files
+        run: |
+          test "$(docker run --rm --entrypoint id cocos-challenge:ci -u)" != "0"
+          docker run --rm --entrypoint sh cocos-challenge:ci -c \
+            '! find /app -maxdepth 2 \( -name docs -o -name test -o -name src -o -name ".env*" \) | grep .'

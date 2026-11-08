@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsInt, Max, Min } from 'class-validator';
 
@@ -8,6 +9,13 @@ export class PortfolioParamsDto {
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value,
   )
+  @ApiProperty({
+    description: 'User id.',
+    type: 'integer',
+    minimum: 1,
+    maximum: MAX_USER_ID,
+    example: 1,
+  })
   @IsInt()
   @Min(1)
   @Max(MAX_USER_ID)

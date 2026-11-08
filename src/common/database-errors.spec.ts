@@ -44,6 +44,8 @@ describe('database error classification', () => {
   it.each([
     'Connection terminated unexpectedly',
     'timeout exceeded when trying to connect',
+    'Client has encountered a connection error and is not queryable',
+    'Cannot use a pool after calling end on the pool',
   ])('treats the pg message "%s" as temporary unavailability', (message) => {
     expect(isTemporarilyUnavailable(new Error(message))).toBe(true);
   });
@@ -68,5 +70,16 @@ describe('database error classification', () => {
 
     expect(describeDatabaseError(error)).toBe('55P03');
     expect(describeDatabaseError(new Error('boom'))).toBe('unknown');
+  });
+
+  it('names code-less pool failures without echoing their message', () => {
+    expect(
+      describeDatabaseError(
+        new Error('timeout exceeded when trying to connect'),
+      ),
+    ).toBe('POOL_ACQUIRE_TIMEOUT');
+    expect(
+      describeDatabaseError(new Error('Connection terminated: user=secret')),
+    ).toBe('CONNECTION_TERMINATED');
   });
 });

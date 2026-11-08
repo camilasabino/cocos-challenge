@@ -15,11 +15,7 @@ import {
   OrderType,
   RejectionReason,
 } from '../domain/order.types';
-import {
-  OrderPlacementStore,
-  OrderPlacementTx,
-  StorageUnavailableError,
-} from './order-placement.store';
+import { OrderPlacementStore, OrderPlacementTx } from './order-placement.store';
 
 export interface PlaceOrderCommand {
   userId: number;
@@ -67,27 +63,9 @@ export class OrdersService {
       );
     }
 
-    let placed: PlacedOrder;
-    try {
-      placed = await this.store.inTransaction((tx) =>
-        this.placeInTransaction(tx, command),
-      );
-    } catch (error) {
-      if (error instanceof StorageUnavailableError) {
-        // Not a guarantee that nothing was committed: a connection failure
-        // during COMMIT is ambiguous, and without idempotency a retry may
-        // duplicate the order.
-        this.logger.warn(
-          `Order placement unavailable (database error ${error.reason}) for user ${command.userId}`,
-        );
-        throw new AppError(
-          503,
-          'SERVICE_UNAVAILABLE',
-          'The service is temporarily unavailable, please retry',
-        );
-      }
-      throw error;
-    }
+    const placed = await this.store.inTransaction((tx) =>
+      this.placeInTransaction(tx, command),
+    );
 
     this.logger.log(
       JSON.stringify({

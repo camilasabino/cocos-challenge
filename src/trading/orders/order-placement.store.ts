@@ -31,27 +31,13 @@ export interface OrderPlacementTx {
   insertOrder(order: NewOrder): Promise<InsertedOrder>;
 }
 
-/**
- * Lock wait timed out or the database is unreachable. If it happened during
- * COMMIT the outcome is unknown, so a retry may duplicate the order.
- */
-export class StorageUnavailableError extends Error {
-  constructor(
-    readonly reason: string,
-    options?: ErrorOptions,
-  ) {
-    super(`Storage unavailable (${reason})`, options);
-    this.name = 'StorageUnavailableError';
-  }
-}
-
 export abstract class OrderPlacementStore {
   abstract findInstrument(id: number): Promise<OrderInstrument | null>;
 
   /**
    * Commits when `work` resolves, rolls back when it throws. Placements for
-   * the same user are serialized.
-   * @throws StorageUnavailableError on a lock timeout or lost database.
+   * the same user are serialized. Lock timeouts and lost connections surface
+   * as driver errors; the HTTP exception filter turns them into 503.
    */
   abstract inTransaction<T>(
     work: (tx: OrderPlacementTx) => Promise<T>,

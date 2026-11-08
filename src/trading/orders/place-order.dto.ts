@@ -1,3 +1,4 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
   IsIn,
@@ -88,33 +89,67 @@ class OrderPriceConstraint implements ValidatorConstraintInterface {
  * evaluates them per property.
  */
 export class PlaceOrderDto {
+  @ApiProperty({ type: 'integer', minimum: 1, maximum: MAX_ID, example: 1 })
   @IsInt()
   @Min(1)
   @Max(MAX_ID)
   userId!: number;
 
+  @ApiProperty({
+    description: 'Cash (`MONEDA`) instruments are not tradable.',
+    type: 'integer',
+    minimum: 1,
+    maximum: MAX_ID,
+    example: 2,
+  })
   @IsInt()
   @Min(1)
   @Max(MAX_ID)
   instrumentId!: number;
 
   // CASH_IN / CASH_OUT are valid order sides in the data but not through this endpoint.
+  @ApiProperty({ enum: [OrderSide.BUY, OrderSide.SELL] })
   @IsIn([OrderSide.BUY, OrderSide.SELL])
   side!: OrderSide.BUY | OrderSide.SELL;
 
+  @ApiProperty({
+    enum: OrderType,
+    description:
+      '`MARKET` executes immediately at the latest close (`FILLED`) and must not carry `price`. `LIMIT` requires `price` and is stored as `NEW`.',
+  })
   @IsEnum(OrderType)
   type!: OrderType;
 
+  @ApiPropertyOptional({
+    type: 'integer',
+    minimum: 1,
+    maximum: MAX_ORDER_SIZE,
+    description:
+      'Exact number of whole shares. Exactly one of `size` or `amount` is required.',
+    example: 10,
+  })
   @ValidateIf(
     (dto: PlaceOrderDto) => dto.size !== undefined || dto.amount === undefined,
   )
   @Validate(OrderSizeConstraint)
   size?: number;
 
+  @ApiPropertyOptional({
+    type: String,
+    pattern: '^\\d+(\\.\\d{1,2})?$',
+    description: `Investment amount in ARS, ${MONEY_RULE}. The quantity is \`floor(amount / price)\`. Mutually exclusive with \`size\`.`,
+    example: '5000.00',
+  })
   @ValidateIf((dto: PlaceOrderDto) => dto.amount !== undefined)
   @Validate(OrderAmountConstraint)
   amount?: string;
 
+  @ApiPropertyOptional({
+    type: String,
+    pattern: '^\\d+(\\.\\d{1,2})?$',
+    description: `Limit price in ARS, ${MONEY_RULE}. Required for LIMIT, forbidden for MARKET.`,
+    example: '1000.00',
+  })
   @ValidateIf(
     (dto: PlaceOrderDto) =>
       dto.price !== undefined || dto.type === OrderType.LIMIT,

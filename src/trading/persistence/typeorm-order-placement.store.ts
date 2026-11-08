@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource, EntityManager } from 'typeorm';
-import {
-  describeDatabaseError,
-  isTemporarilyUnavailable,
-} from '../../common/database-errors';
 import { Env } from '../../config/env';
 import { InstrumentsRepository } from '../../instruments/instruments.repository';
 import { MarketDataRepository } from '../../market-data/market-data.repository';
@@ -12,7 +8,6 @@ import {
   OrderInstrument,
   OrderPlacementStore,
   OrderPlacementTx,
-  StorageUnavailableError,
 } from '../orders/order-placement.store';
 import { TradingRepository } from './trading.repository';
 
@@ -39,25 +34,13 @@ export class TypeOrmOrderPlacementStore implements OrderPlacementStore {
   async inTransaction<T>(
     work: (tx: OrderPlacementTx) => Promise<T>,
   ): Promise<T> {
-    try {
-      return await this.dataSource.transaction(
-        'READ COMMITTED',
-        async (manager) => {
-          // SET LOCAL cannot take a bound value; set_config(…, true) is equivalent.
-          await manager.query(`SELECT set_config('lock_timeout', $1, true)`, [
-            `${this.config.get('DB_LOCK_TIMEOUT_MS', { infer: true })}ms`,
-          ]);
-          return work(this.txOver(manager));
-        },
-      );
-    } catch (error) {
-      if (isTemporarilyUnavailable(error)) {
-        throw new StorageUnavailableError(describeDatabaseError(error), {
-          cause: error,
-        });
-      }
-      throw error;
-    }
+    return this.dataSource.transaction('READ COMMITTED', async (manager) => {
+      // SET LOCAL cannot take a bound value; set_config(…, true) is equivalent.
+      await manager.query(`SELECT set_config('lock_timeout', $1, true)`, [
+        `${this.config.get('DB_LOCK_TIMEOUT_MS', { infer: true })}ms`,
+      ]);
+      return work(this.txOver(manager));
+    });
   }
 
   private txOver(manager: EntityManager): OrderPlacementTx {

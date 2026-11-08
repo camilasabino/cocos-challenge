@@ -1,0 +1,107 @@
+# REST Client (VS Code "REST Client" extension) examples. Click "Send Request".
+# IDs match the local demo database (db/init/02-demo-seed.sql):
+#   users: 1 active, 2 empty, 3 oversold    instruments: 1 ARS (cash), 2 NRTE,
+#   4 SOLA, 5 LUMI, 6 MARB, 7 TERR (no market data)
+# Requests marked [WRITES] insert rows into `orders`. More detail: Swagger UI at /api.
+
+@baseUrl = http://localhost:3000
+@userId = 1
+
+### Health (readiness: 200 only while PostgreSQL is reachable)
+GET {{baseUrl}}/health
+
+### Search by ticker or name (case-insensitive, substring)
+GET {{baseUrl}}/instruments/search?q=norte&limit=5
+
+### Search: no match -> 200 []
+GET {{baseUrl}}/instruments/search?q=zzzz
+
+### Search: invalid query -> 400 VALIDATION_ERROR
+GET {{baseUrl}}/instruments/search?q=%20
+
+### Portfolio (money values are decimal strings)
+GET {{baseUrl}}/users/{{userId}}/portfolio
+
+### Portfolio: historical negative position (null cost fields)
+GET {{baseUrl}}/users/3/portfolio
+
+### Portfolio: unknown user -> 404 USER_NOT_FOUND
+GET {{baseUrl}}/users/9999/portfolio
+
+### [WRITES] MARKET BUY by size -> 201 FILLED at the latest close
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": {{userId}}, "instrumentId": 2, "side": "BUY", "type": "MARKET", "size": 1 }
+
+### [WRITES] MARKET SELL by size -> 201 FILLED
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": {{userId}}, "instrumentId": 5, "side": "SELL", "type": "MARKET", "size": 1 }
+
+### [WRITES] MARKET BUY by ARS amount -> shares = floor(amount / close)
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": {{userId}}, "instrumentId": 4, "side": "BUY", "type": "MARKET", "amount": "5000.00" }
+
+### [WRITES] LIMIT BUY -> 201 NEW (reserves cash; never filled by this system)
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": {{userId}}, "instrumentId": 2, "side": "BUY", "type": "LIMIT", "size": 1, "price": "1000.00" }
+
+### [WRITES] LIMIT SELL by amount -> sized with the limit price
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": {{userId}}, "instrumentId": 5, "side": "SELL", "type": "LIMIT", "amount": "3800.00", "price": "1900.00" }
+
+### [WRITES] REJECTED: insufficient funds -> still 201, persisted as REJECTED
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": 2, "instrumentId": 2, "side": "BUY", "type": "MARKET", "size": 1 }
+
+### [WRITES] REJECTED: insufficient shares -> still 201, persisted as REJECTED
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": 3, "instrumentId": 5, "side": "SELL", "type": "MARKET", "size": 1 }
+
+### 400: LIMIT without price
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": {{userId}}, "instrumentId": 2, "side": "BUY", "type": "LIMIT", "size": 1 }
+
+### 400: size and amount together
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": {{userId}}, "instrumentId": 2, "side": "BUY", "type": "MARKET", "size": 1, "amount": "1000.00" }
+
+### 404: unknown instrument
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": {{userId}}, "instrumentId": 9999, "side": "BUY", "type": "MARKET", "size": 1 }
+
+### 422: cash instrument is not tradable
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": {{userId}}, "instrumentId": 1, "side": "BUY", "type": "MARKET", "size": 1 }
+
+### 422: MARKET order on an instrument without market data
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": {{userId}}, "instrumentId": 7, "side": "BUY", "type": "MARKET", "size": 1 }
+
+### 422: amount smaller than one share (ZERO_QUANTITY)
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{ "userId": {{userId}}, "instrumentId": 6, "side": "BUY", "type": "MARKET", "amount": "10.00" }

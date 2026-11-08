@@ -1,0 +1,15 @@
+# Allowlist: private docs and secrets stay out of the build context even when
+# new files appear.
+*
+
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.build.json
+!nest-cli.json
+!src/
+
+# Excluded even inside allowed directories.
+**/*.spec.ts
+**/.DS_Store
+**/*.log

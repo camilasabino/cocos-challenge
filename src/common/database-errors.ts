@@ -21,11 +21,14 @@ const UNAVAILABLE_NODE_CODES = new Set([
   'EAI_AGAIN',
 ]);
 
-/** `pg` reports these two conditions without any code. */
-const UNAVAILABLE_MESSAGES = [
-  'Connection terminated',
-  'timeout exceeded when trying to connect',
-];
+/** `pg` and `pg-pool` report these conditions without any code. */
+const UNAVAILABLE_MESSAGES: Record<string, string> = {
+  'timeout exceeded when trying to connect': 'POOL_ACQUIRE_TIMEOUT',
+  'Connection terminated': 'CONNECTION_TERMINATED',
+  'Client has encountered a connection error and is not queryable':
+    'CONNECTION_LOST',
+  'Cannot use a pool after calling end on the pool': 'POOL_CLOSED',
+};
 
 export function isLockTimeout(error: unknown): boolean {
   return errorCodes(error).includes(LOCK_NOT_AVAILABLE);
@@ -43,13 +46,20 @@ export function isTemporarilyUnavailable(error: unknown): boolean {
   ) {
     return true;
   }
-  const message = error instanceof Error ? error.message : '';
-  return UNAVAILABLE_MESSAGES.some((fragment) => message.includes(fragment));
+  return matchedMessage(error) !== undefined;
 }
 
-/** Never the message: it may carry connection details. */
+/** Never the raw message: it may carry connection details. */
 export function describeDatabaseError(error: unknown): string {
-  return errorCodes(error)[0] ?? 'unknown';
+  return errorCodes(error)[0] ?? matchedMessage(error) ?? 'unknown';
+}
+
+function matchedMessage(error: unknown): string | undefined {
+  const message = error instanceof Error ? error.message : '';
+  const fragment = Object.keys(UNAVAILABLE_MESSAGES).find((candidate) =>
+    message.includes(candidate),
+  );
+  return fragment && UNAVAILABLE_MESSAGES[fragment];
 }
 
 function errorCodes(error: unknown): string[] {

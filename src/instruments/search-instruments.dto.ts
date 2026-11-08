@@ -1,3 +1,4 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 
@@ -9,6 +10,12 @@ export class SearchInstrumentsDto {
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
+  @ApiProperty({
+    description: 'Text to look for in the ticker or the name (trimmed).',
+    minLength: 1,
+    maxLength: MAX_QUERY_LENGTH,
+    example: 'nor',
+  })
   @IsString()
   @Length(1, MAX_QUERY_LENGTH)
   q!: string;
@@ -17,6 +24,13 @@ export class SearchInstrumentsDto {
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value,
   )
+  @ApiPropertyOptional({
+    description: 'Maximum number of results; the best-ranked ones are kept.',
+    type: 'integer',
+    minimum: 1,
+    maximum: MAX_SEARCH_LIMIT,
+    default: DEFAULT_SEARCH_LIMIT,
+  })
   @IsOptional()
   @IsInt()
   @Min(1)

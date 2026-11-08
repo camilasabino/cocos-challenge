@@ -12,7 +12,10 @@ function run(exception: unknown): { status: number; body: unknown } {
     },
   };
   const host = {
-    switchToHttp: () => ({ getResponse: () => response }),
+    switchToHttp: () => ({
+      getResponse: () => response,
+      getRequest: () => ({ method: 'POST', path: '/orders' }),
+    }),
   } as unknown as ArgumentsHost;
 
   new AppExceptionFilter().catch(exception, host);
@@ -22,6 +25,7 @@ function run(exception: unknown): { status: number; body: unknown } {
 describe('AppExceptionFilter', () => {
   beforeEach(() => {
     jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
   });
   afterEach(() => jest.restoreAllMocks());
 
@@ -80,6 +84,73 @@ describe('AppExceptionFilter', () => {
       statusCode: 500,
       code: 'INTERNAL_ERROR',
       message: 'Internal server error',
+    });
+  });
+
+  describe('database availability', () => {
+    const unavailable = {
+      statusCode: 503,
+      code: 'SERVICE_UNAVAILABLE',
+      message: 'The service is temporarily unavailable',
+    };
+
+    /** Mimics QueryFailedError: the driver code is copied and kept in `driverError`. */
+    const queryFailed = (code: string) =>
+      Object.assign(new Error('query failed'), {
+        code,
+        driverError: { code },
+      });
+
+    it.each([
+      ['lock timeout', queryFailed('55P03')],
+      ['administrator shutdown', queryFailed('57P01')],
+      ['database starting up', queryFailed('57P03')],
+      ['connection exception class', queryFailed('08006')],
+      [
+        'unreachable server',
+        Object.assign(new Error('x'), { code: 'ECONNREFUSED' }),
+      ],
+      [
+        'connection reset',
+        Object.assign(new Error('x'), { code: 'ECONNRESET' }),
+      ],
+      [
+        'pool acquisition timeout',
+        new Error('timeout exceeded when trying to connect'),
+      ],
+      ['connection lost', new Error('Connection terminated unexpectedly')],
+      [
+        'closed pool',
+        new Error('Cannot use a pool after calling end on the pool'),
+      ],
+    ])('answers 503 for %s with the agreed body', (_label, error) => {
+      expect(run(error)).toEqual({ status: 503, body: unavailable });
+    });
+
+    it('never leaks connection details and logs only a code', () => {
+      const warn = jest.spyOn(Logger.prototype, 'warn');
+      const error = Object.assign(
+        new Error('connect ECONNREFUSED postgres://user:s3cret@db/cocos'),
+        { code: 'ECONNREFUSED' },
+      );
+
+      const { body } = run(error);
+
+      expect(JSON.stringify(body)).not.toMatch(/s3cret|postgres|ECONNREFUSED/);
+      const logged = String(warn.mock.calls[0][0]);
+      expect(logged).toBe(
+        'Database unavailable (ECONNREFUSED) while handling POST /orders',
+      );
+      expect(logged).not.toContain('s3cret');
+    });
+
+    it.each([
+      ['invalid SQL (undefined table)', queryFailed('42P01')],
+      ['foreign key violation', queryFailed('23503')],
+      ['numeric overflow', queryFailed('22003')],
+      ['programming error', new TypeError('x is not a function')],
+    ])('keeps %s as a generic 500', (_label, error) => {
+      expect(run(error).status).toBe(500);
     });
   });
 });

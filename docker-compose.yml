@@ -23,5 +23,20 @@ services:
       timeout: 3s
       retries: 30
 
+  # Optional: the production image against the database above. Inside the
+  # Compose network PostgreSQL is `postgres:5432`, not localhost.
+  app:
+    profiles: ['app']
+    build: .
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?Set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/cocos
+      PORT: '3000'
+    ports:
+      - '127.0.0.1:${APP_PORT:-3000}:3000'
+
 volumes:
   postgres_data:
