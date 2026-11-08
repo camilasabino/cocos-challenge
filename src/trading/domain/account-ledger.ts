@@ -1,5 +1,5 @@
 import Decimal from 'decimal.js';
-import { ZERO } from '../common/decimal';
+import { ZERO } from '../../common/decimal';
 import { OrderSide, OrderStatus, OrderType } from './order.types';
 
 /** One row of `orders`, already converted to domain types by the persistence layer. */

@@ -25,8 +25,9 @@ export interface OrderDecision {
 }
 
 /**
- * Decides the status a new order is persisted with, given the account state
- * (F10, F11).
+ * Decides the status a new order is persisted with, given the account state.
+ * Insufficient cash or shares is not an error: the order is still persisted,
+ * as REJECTED.
  *
  * - BUY needs `quantity * price` of available cash (cash minus NEW BUY reservations).
  * - SELL needs `quantity` available shares (held minus NEW SELL reservations).

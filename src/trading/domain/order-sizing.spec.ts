@@ -1,4 +1,4 @@
-import { parseDecimal } from '../common/decimal';
+import { parseDecimal } from '../../common/decimal';
 import { resolveQuantity } from './order-sizing';
 
 const price = parseDecimal;

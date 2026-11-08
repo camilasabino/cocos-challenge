@@ -1,5 +1,5 @@
-import { parseDecimal } from '../common/decimal';
-import { Portfolio } from './portfolio-valuation';
+import { parseDecimal } from '../../common/decimal';
+import { Portfolio } from '../domain/portfolio-valuation';
 import { toPortfolioResponse } from './portfolio.response';
 
 const d = parseDecimal;

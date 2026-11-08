@@ -15,6 +15,3 @@ export class Instrument {
   @Column({ name: 'type', type: 'varchar', length: 10, nullable: true })
   type!: string | null;
 }
-
-/** Instrument type of the cash currency; it is neither searchable nor tradable. */
-export const CASH_INSTRUMENT_TYPE = 'MONEDA';

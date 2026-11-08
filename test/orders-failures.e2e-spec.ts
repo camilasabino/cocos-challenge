@@ -2,7 +2,7 @@ import { SHORT_LOCK_TIMEOUT_MS } from './setup/short-lock-timeout'; // must stay
 import { INestApplication, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { fixtureInstrumentId } from './fixtures/instruments';
-import { TradingRepository } from '../src/trading/trading.repository';
+import { TradingRepository } from '../src/trading/persistence/trading.repository';
 import { createTestApp } from './setup/create-test-app';
 import { insertTestOrders } from './setup/create-test-orders';
 import { createTestUser } from './setup/create-test-user';

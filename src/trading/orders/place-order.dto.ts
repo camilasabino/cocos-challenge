@@ -10,17 +10,17 @@ import {
   ValidatorConstraint,
   ValidatorConstraintInterface,
 } from 'class-validator';
-import { isDecimalString, parseDecimal } from '../common/decimal';
-import { OrderSide, OrderType } from './order.types';
-import { MAX_ORDER_SIZE } from './order-sizing';
+import { isDecimalString, parseDecimal } from '../../common/decimal';
+import { OrderSide, OrderType } from '../domain/order.types';
+import { MAX_ORDER_SIZE } from '../domain/order-sizing';
 
 /** Largest id of the `users` / `instruments` INT primary keys. */
 const MAX_ID = 2147483647;
-/** Largest value of the NUMERIC(10,2) price columns (F14). */
+/** Largest value of the NUMERIC(10,2) price columns. */
 export const MAX_MONEY = '99999999.99';
 const MONEY_DECIMALS = 2;
 
-/** Shared rule for `amount` and `price`: plain decimal string, 0 < v <= MAX_MONEY, at most 2 decimals (F14). */
+/** Shared rule for `amount` and `price`: plain decimal string, 0 < v <= MAX_MONEY, at most 2 decimals. Invalid values are rejected, never rounded. */
 function isValidMoney(value: unknown): value is string {
   if (typeof value !== 'string' || !isDecimalString(value, MONEY_DECIMALS)) {
     return false;
@@ -87,7 +87,7 @@ class OrderPriceConstraint implements ValidatorConstraintInterface {
 }
 
 /**
- * Body of `POST /orders` (§4.3). Numbers are never coerced from strings and
+ * Body of `POST /orders`. Numbers are never coerced from strings and
  * money travels as decimal strings, so no float ever touches a price.
  * Cross-field rules live in the constraints above because class-validator
  * evaluates them per property: exactly one of `size`/`amount`, and `price`
@@ -104,7 +104,7 @@ export class PlaceOrderDto {
   @Max(MAX_ID)
   instrumentId!: number;
 
-  // CASH_IN / CASH_OUT are valid order sides in the data but not through this endpoint (F13).
+  // CASH_IN / CASH_OUT are valid order sides in the data but not through this endpoint.
   @IsIn([OrderSide.BUY, OrderSide.SELL])
   side!: OrderSide.BUY | OrderSide.SELL;
 

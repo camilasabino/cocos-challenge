@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { parseDecimal } from '../common/decimal';
-import { OrderType } from './order.types';
+import { parseDecimal } from '../../common/decimal';
+import { OrderType } from '../domain/order.types';
 import { OrderResponse, toOrderResponse } from './order.response';
 import { PlaceOrderDto } from './place-order.dto';
 import { OrdersService, PlaceOrderCommand } from './orders.service';
@@ -9,7 +9,7 @@ import { OrdersService, PlaceOrderCommand } from './orders.service';
 export class OrdersController {
   constructor(private readonly orders: OrdersService) {}
 
-  /** 201 for every persisted order, including REJECTED ones (F11). */
+  /** 201 for every persisted order, including REJECTED ones (insufficient cash or shares). */
   @Post()
   async place(@Body() dto: PlaceOrderDto): Promise<OrderResponse> {
     return toOrderResponse(await this.orders.placeOrder(toCommand(dto)));

@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import Decimal from 'decimal.js';
 import { EntityManager } from 'typeorm';
-import { parseDecimal } from '../common/decimal';
-import { LedgerOrder } from './account-ledger';
+import { parseDecimal } from '../../common/decimal';
+import { LedgerOrder } from '../domain/account-ledger';
 import { Order } from './order.entity';
-import { OrderSide, OrderStatus, OrderType } from './order.types';
+import { OrderSide, OrderStatus, OrderType } from '../domain/order.types';
+import { InsertedOrder, NewOrder } from '../orders/order-placement.store';
 import { User } from './user.entity';
 
 interface LedgerOrderRow {
@@ -20,22 +20,6 @@ interface LedgerOrderRow {
 
 /** Renders a TIMESTAMP-without-zone column (stored as UTC) as an ISO-8601 string with `Z`. */
 const UTC_ISO_FORMAT = `YYYY-MM-DD"T"HH24:MI:SS.MS"Z"`;
-
-/** A validated order ready to be stored. `datetime` is assigned by the database. */
-export interface NewOrder {
-  userId: number;
-  instrumentId: number;
-  side: OrderSide;
-  type: OrderType;
-  status: OrderStatus;
-  size: number;
-  price: Decimal;
-}
-
-export interface InsertedOrder {
-  id: number;
-  datetime: Date;
-}
 
 /**
  * Persistence access for users and orders. Every method runs on the manager it

@@ -1,30 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import Decimal from 'decimal.js';
-import { DataSource, EntityManager } from 'typeorm';
-import { AppError } from '../common/app-error';
-import {
-  describeDatabaseError,
-  isTemporarilyUnavailable,
-} from '../common/database-errors';
-import { Env } from '../config/env';
-import { CASH_INSTRUMENT_TYPE } from '../instruments/instrument.entity';
-import { InstrumentsService } from '../instruments/instruments.service';
-import { MarketDataRepository } from '../market-data/market-data.repository';
-import { buildAccountLedger } from './account-ledger';
-import { decideOrder } from './order-evaluation';
+import { AppError } from '../../common/app-error';
+import { CASH_INSTRUMENT_TYPE } from '../../instruments/instrument-type';
+import { buildAccountLedger } from '../domain/account-ledger';
+import { decideOrder } from '../domain/order-decision';
 import {
   MAX_ORDER_SIZE,
   QuantityRequest,
   resolveQuantity,
-} from './order-sizing';
+} from '../domain/order-sizing';
 import {
   OrderSide,
   OrderStatus,
   OrderType,
   RejectionReason,
-} from './order.types';
-import { TradingRepository } from './trading.repository';
+} from '../domain/order.types';
+import {
+  OrderPlacementStore,
+  OrderPlacementTx,
+  StorageUnavailableError,
+} from './order-placement.store';
 
 /** What the caller asks for; everything else is resolved while placing. */
 export interface PlaceOrderCommand {
@@ -55,32 +50,16 @@ export interface PlacedOrder {
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
 
-  constructor(
-    private readonly dataSource: DataSource,
-    private readonly config: ConfigService<Env, true>,
-    private readonly trading: TradingRepository,
-    private readonly instruments: InstrumentsService,
-    private readonly marketData: MarketDataRepository,
-  ) {}
+  constructor(private readonly store: OrderPlacementStore) {}
 
   /**
-   * Places one order in a single transaction (§2.5).
-   *
-   * Concurrency: the first thing the transaction does is lock the user's row
-   * (`SELECT … FOR UPDATE`), so every placement for that user is serialized by
-   * PostgreSQL itself — across processes and instances — and balances are
-   * read only after earlier placements committed. READ COMMITTED is required:
-   * each statement sees the latest committed state, including what the
-   * previous lock holder just wrote; a REPEATABLE READ snapshot would predate
-   * the lock wait and miss it. Only the user's row is locked and always first,
-   * so placements cannot deadlock with each other.
-   *
-   * Everything that reads balances or writes the order uses the transaction's
-   * EntityManager. Any error rolls the transaction back; a REJECTED order is
-   * a successful outcome and is committed.
+   * Places one order in a single transaction. The user lock is taken first, so
+   * balances are read only after earlier placements for that user committed.
+   * Every read and the insert run in the same transaction. Any error rolls it
+   * back; a REJECTED order is a successful outcome and is committed.
    */
   async placeOrder(command: PlaceOrderCommand): Promise<PlacedOrder> {
-    const instrument = await this.instruments.findById(command.instrumentId);
+    const instrument = await this.store.findInstrument(command.instrumentId);
     if (!instrument) {
       throw new AppError(
         404,
@@ -98,14 +77,14 @@ export class OrdersService {
 
     let placed: PlacedOrder;
     try {
-      placed = await this.dataSource.transaction('READ COMMITTED', (manager) =>
-        this.placeInTransaction(manager, command),
+      placed = await this.store.inTransaction((tx) =>
+        this.placeInTransaction(tx, command),
       );
     } catch (error) {
-      if (isTemporarilyUnavailable(error)) {
+      if (error instanceof StorageUnavailableError) {
         // Lock timeout or unreachable database: nothing was committed.
         this.logger.warn(
-          `Order placement unavailable (database error ${describeDatabaseError(error)}) for user ${command.userId}`,
+          `Order placement unavailable (database error ${error.reason}) for user ${command.userId}`,
         );
         throw new AppError(
           503,
@@ -129,22 +108,16 @@ export class OrdersService {
   }
 
   private async placeInTransaction(
-    manager: EntityManager,
+    tx: OrderPlacementTx,
     command: PlaceOrderCommand,
   ): Promise<PlacedOrder> {
     const { userId, instrumentId, side, type } = command;
 
-    // `lock_timeout` cannot be parameterized in SET; set_config(…, true) is the
-    // transaction-local equivalent of SET LOCAL and takes a bound value.
-    await manager.query(`SELECT set_config('lock_timeout', $1, true)`, [
-      `${this.config.get('DB_LOCK_TIMEOUT_MS', { infer: true })}ms`,
-    ]);
-
-    if (!(await this.trading.lockUser(manager, userId))) {
+    if (!(await tx.lockUser(userId))) {
       throw new AppError(404, 'USER_NOT_FOUND', `User ${userId} not found`);
     }
 
-    const price = await this.resolvePrice(manager, command);
+    const price = await this.resolvePrice(tx, command);
     const quantity = resolveQuantity(command.quantity, price);
     if (quantity === 0) {
       throw new AppError(
@@ -161,9 +134,7 @@ export class OrdersService {
       );
     }
 
-    const ledger = buildAccountLedger(
-      await this.trading.findLedgerOrders(manager, userId),
-    );
+    const ledger = buildAccountLedger(await tx.findLedgerOrders(userId));
     const decision = decideOrder(ledger, {
       side,
       type,
@@ -172,7 +143,7 @@ export class OrdersService {
       price,
     });
 
-    const inserted = await this.trading.insertOrder(manager, {
+    const inserted = await tx.insertOrder({
       userId,
       instrumentId,
       side,
@@ -198,7 +169,7 @@ export class OrdersService {
 
   /** MARKET executes at the latest close; LIMIT at the requested price. */
   private async resolvePrice(
-    manager: EntityManager,
+    tx: OrderPlacementTx,
     command: PlaceOrderCommand,
   ): Promise<Decimal> {
     if (command.type === OrderType.LIMIT) {
@@ -208,10 +179,7 @@ export class OrdersService {
       return command.limitPrice;
     }
 
-    const latest = await this.marketData.findLatestByInstrumentIds(manager, [
-      command.instrumentId,
-    ]);
-    const close = latest.get(command.instrumentId)?.close;
+    const close = (await tx.findLatestPrice(command.instrumentId))?.close;
     // A non-positive close cannot execute an order (it would be free or
     // meaningless), so it counts as no usable price. Data is not corrected.
     if (!close || close.lessThanOrEqualTo(0)) {

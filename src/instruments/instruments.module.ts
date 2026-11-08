@@ -2,12 +2,13 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Instrument } from './instrument.entity';
 import { InstrumentsController } from './instruments.controller';
+import { InstrumentsRepository } from './instruments.repository';
 import { InstrumentsService } from './instruments.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Instrument])],
   controllers: [InstrumentsController],
-  providers: [InstrumentsService],
-  exports: [InstrumentsService],
+  providers: [InstrumentsService, InstrumentsRepository],
+  exports: [InstrumentsRepository],
 })
 export class InstrumentsModule {}

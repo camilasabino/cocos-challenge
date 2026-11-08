@@ -5,7 +5,7 @@ import { DataSource } from 'typeorm';
 import type {
   PortfolioResponse,
   PositionResponse,
-} from '../src/trading/portfolio.response';
+} from '../src/trading/portfolio/portfolio.response';
 import { fixtureInstrumentId } from './fixtures/instruments';
 import { createTestApp } from './setup/create-test-app';
 import { TestOrder, insertTestOrders } from './setup/create-test-orders';

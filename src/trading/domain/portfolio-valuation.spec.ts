@@ -1,6 +1,6 @@
 import Decimal from 'decimal.js';
-import { parseDecimal } from '../common/decimal';
-import { LatestPrice } from '../market-data/latest-price';
+import { parseDecimal } from '../../common/decimal';
+import { LatestPrice } from '../../market-data/latest-price';
 import { AccountLedger, Holding } from './account-ledger';
 import {
   InstrumentInfo,
@@ -104,7 +104,7 @@ describe('valuePortfolio', () => {
     expect(position.totalReturnPercent?.toString()).toBe('20');
   });
 
-  it('lists a negative holding with a negative market value and no cost-based figures (F6)', () => {
+  it('lists a negative holding with a negative market value and no cost-based figures', () => {
     const portfolio = valuePortfolio({
       userId: 1,
       ledger: ledgerOf({ 1: holding(-10, null) }, '100000.00'),
@@ -122,7 +122,7 @@ describe('valuePortfolio', () => {
     expect(text(portfolio.totalAccountValue)).toBe('84972');
   });
 
-  it('reports no total and flags unpriced positions instead of a partial valuation (F9)', () => {
+  it('reports no total and flags unpriced positions instead of a partial valuation', () => {
     const portfolio = valuePortfolio({
       userId: 1,
       ledger: ledgerOf({ 1: holding(10, '1000'), 2: holding(5, '50') }),

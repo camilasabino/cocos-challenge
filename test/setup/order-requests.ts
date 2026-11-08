@@ -2,8 +2,8 @@ import { Server } from 'node:http';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
-import type { OrderResponse } from '../../src/trading/order.response';
-import type { PortfolioResponse } from '../../src/trading/portfolio.response';
+import type { OrderResponse } from '../../src/trading/orders/order.response';
+import type { PortfolioResponse } from '../../src/trading/portfolio/portfolio.response';
 
 /** Ordinary `POST /orders`; the body is deliberately untyped so tests can send invalid ones. */
 export function postOrder(app: INestApplication, body?: unknown) {
